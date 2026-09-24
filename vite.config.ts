@@ -4,5 +4,9 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   base: './',
-  server: { port: 5173 },
+  server: {
+    port: 5173,
+    // Multi-hundred-MB segmentation models live here; watching them crashes the dev server (EBUSY).
+    watch: { ignored: ['**/scripts/.cache/**', '**/public/portraits/anim-src/**'] },
+  },
 });
