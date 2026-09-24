@@ -13,6 +13,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p .",
     "sim": "tsx scripts/simulate.ts",
+    "portraits:anim": "tsx scripts/gen-portrait-anims.ts",
     "cap:sync": "vite build && cap sync"
   },
   "engines": {

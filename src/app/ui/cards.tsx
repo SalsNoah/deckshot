@@ -17,44 +17,57 @@ const CARD_ART_IDS = [
   'eco', 'fallback', 'smoke', 'flashbang', 'stim', 'drone', 'focusfire', 'frag', 'molotov', 'precision', 'reinforce', 'c4',
 ] as const;
 
+const OPERATOR_ANIM_IDS = new Set([
+  'rookie', 'scout', 'jolt', 'bulwark', 'haze', 'wire', 'kingpin', 'blitz', 'breacher', 'ghost',
+  'angel', 'banshee', 'hawk', 'reaper', 'vanguard', 'titan', 'ace', 'deadeye',
+  'shard', 'anchor', 'mimic', 'widow', 'leech', 'blast', 'martyr', 'phoenix', 'pack', 'lonewolf', 'scav', 'spark',
+]);
+
 function cardArtSrc(id: string): string {
   return publicAsset(`portraits/${id}.webp`);
 }
 
-/** Shared SVG filter for hair-flow portraits (mounted once). */
-export function PortraitFlowDefs() {
-  return (
-    <svg className="portrait-flow-defs" aria-hidden width="0" height="0">
-      <defs>
-        <filter id="portraitHairFlow" x="-12%" y="-12%" width="124%" height="124%" colorInterpolationFilters="sRGB">
-          <feTurbulence type="fractalNoise" baseFrequency="0.014 0.045" numOctaves="2" seed="3" result="noise">
-            <animate
-              attributeName="baseFrequency"
-              dur="2.8s"
-              values="0.012 0.035;0.022 0.06;0.015 0.042;0.012 0.035"
-              repeatCount="indefinite"
-            />
-          </feTurbulence>
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="6.5" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
-      </defs>
-    </svg>
-  );
+/** Pre-baked hair-flow loop (see `npm run portraits:anim`). */
+function cardAnimSrc(id: string): string {
+  return publicAsset(`portraits/anim/${id}.webp`);
 }
 
 export function hasCardArt(cardId: string): boolean {
   return (CARD_ART_IDS as readonly string[]).includes(cardId);
 }
 
-/** Neon card portrait. Falls back to a coloured tile if art is missing. */
+export function hasPortraitAnim(cardId: string): boolean {
+  return OPERATOR_ANIM_IDS.has(cardId);
+}
+
+/** Neon card portrait. Animation-rare swaps the still for a baked frame-strip loop. */
 export function Portrait({ cardId, size = 56, flow }: { cardId: string; size?: number; flow?: boolean }) {
   const def = card(cardId);
   const accent = cardColor(cardId);
+  const useAnim = Boolean(flow && hasPortraitAnim(cardId));
+  if (useAnim) {
+    const frames = 12;
+    return (
+      <div
+        className="portrait portrait-anim"
+        role="img"
+        aria-label={def.en}
+        style={{
+          width: size,
+          height: size,
+          '--role': accent,
+          backgroundImage: `url("${cardAnimSrc(cardId)}")`,
+          '--anim-frames': frames,
+          '--anim-dur': `${frames * 0.07}s`,
+        } as CSSProperties}
+      />
+    );
+  }
   const src = hasCardArt(cardId) ? cardArtSrc(cardId) : undefined;
   if (src) {
     return (
       <img
-        className={`portrait${flow ? ' portrait-flow' : ''}`}
+        className="portrait"
         src={src}
         alt={def.en}
         width={size}

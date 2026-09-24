@@ -4,7 +4,6 @@ import { LocalCpuMatch, type MatchConnection } from './match';
 import type { OnlineMatch } from './online';
 import { isDeckReady, loadProfile, matchRpDelta, saveProfile, type Profile } from './profile';
 import { setBgm, setSoundEnabled, unlockAudio } from './sfx';
-import { PortraitFlowDefs } from './ui/cards';
 import { Battle, type MatchResult } from './screens/Battle';
 import { Cards } from './screens/Cards';
 import { DeckEdit } from './screens/DeckEdit';
@@ -100,7 +99,6 @@ export function App() {
 
   return (
     <div className="app">
-      <PortraitFlowDefs />
       {screen.name === 'title' && (
         <Title
           profile={profile}
