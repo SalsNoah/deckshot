@@ -45,7 +45,7 @@ function sampleBilinear(
   h: number,
   x: number,
   y: number,
-  out: Uint8Array,
+  out: Uint8Array | Uint8ClampedArray,
   oi: number,
 ) {
   const x0 = Math.floor(x);
