@@ -12,4 +12,5 @@ ios
 
 # AI animation source frames (regenerable)
 public/portraits/anim-src/
+scripts/.cache/
 
