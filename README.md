@@ -3,6 +3,16 @@
 **3分で決着する、読み合いFPSカードバトル。**
 両者が同時に作戦を立て、一斉に公開。AIMの速いほうが先に撃つ。スモーク・フラッシュ・裏取り・C4・キルストリーク、最後は戦術核。
 
+## 公開プレイURL（スマホ可）
+
+**https://salsnoah.github.io/deckshot/**
+
+誰のスマホ・PCのブラウザからでも開けます（ホーム画面への追加推奨）。CPU対戦はそのまま遊べます。
+
+> オンライン対戦まで常時公開するには、下の Render ワンクリックデプロイでゲームサーバー付きURLを立ててください（無料枠あり。15分無通信でスリープします）。
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/SalsNoah/deckshot)
+
 - 調査レポート: [docs/research.md](docs/research.md)
 - ゲーム骨子（ルール・カード・収益化・ロードマップ）: [docs/game-design.md](docs/game-design.md)
 
@@ -15,7 +25,7 @@ npm run dev
 
 - Web: http://localhost:5173 （ポートが埋まっていれば 5174 など）
 - ゲームサーバー: ws://localhost:8787 （オンライン対戦用。`npm run dev` で同時に起動）
-- **スマホで試す**: PCと同じWi-Fiにつないだスマホで、ターミナルに表示される `Network: http://192.168.x.x:5173` を開く。オンライン対戦も同じLAN内ならそのまま動く。
+- **スマホで試す（ローカル）**: PCと同じWi-Fiにつないだスマホで、ターミナルに表示される `Network: http://192.168.x.x:5173` を開く。
 
 | モード | 内容 |
 | --- | --- |
