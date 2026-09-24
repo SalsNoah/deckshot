@@ -2,8 +2,8 @@
  * Bake operator motion loops (animated WebP) from the card stills.
  *
  * Each portrait is cut out (see portrait-mask.ts) and animated in layers:
- * the aura behind the character streams outward, pulses race along the
- * glowing lines on the body, and hair near the silhouette sways.
+ * the aura behind the character streams outward, and pulses race along the
+ * glowing lines on the body.
  *
  *   npm run portraits:anim            # all operators
  *   npm run portraits:anim ace hawk   # just these
@@ -33,7 +33,6 @@ const QUALITY = 76;
 const AURA_FLOW_PX = 30;
 const AURA_CYCLES = 2;
 const FLAME_RISE_PX = 60;
-const HAIR_AMP_PX = 9;
 const PULSE_SPACING_PX = 56;
 const PULSES_PER_LOOP = 4;
 
@@ -42,21 +41,12 @@ type Tuning = {
   auraFlow?: number;
   /** Also race pulses along glowing lines in the background. */
   bgPulses?: boolean;
-  /** Multiplier on hair sway amplitude. */
-  hair?: number;
-  /** Helmet / hard armour silhouette: never sway it. */
-  rigid?: boolean;
 };
 
 // Cut-outs for these portraits lose most of the character; animate without layer separation.
 const NO_CUTOUT = new Set<OperatorId>(['ghost', 'shard', 'spark']);
 
 const TUNING: Partial<Record<OperatorId, Tuning>> = {
-  bulwark: { rigid: true },
-  breacher: { rigid: true },
-  titan: { rigid: true },
-  anchor: { rigid: true },
-  pack: { rigid: true },
   kingpin: { auraFlow: 0.3, bgPulses: true },
 };
 
@@ -215,41 +205,6 @@ function valueNoise(cellX: number, cellY: number, seed: number): Float32Array {
   return out;
 }
 
-/** Chamfer distance (px) from every pixel to the nearest `isSource` pixel. */
-function distanceField(isSource: (i: number) => boolean): Float32Array {
-  const INF = 1e9;
-  const d = new Float32Array(N);
-  for (let i = 0; i < N; i++) d[i] = isSource(i) ? 0 : INF;
-  for (let y = 0; y < S; y++) {
-    for (let x = 0; x < S; x++) {
-      const i = y * S + x;
-      let v = d[i]!;
-      if (x > 0) v = Math.min(v, d[i - 1]! + 3);
-      if (y > 0) {
-        v = Math.min(v, d[i - S]! + 3);
-        if (x > 0) v = Math.min(v, d[i - S - 1]! + 4);
-        if (x < S - 1) v = Math.min(v, d[i - S + 1]! + 4);
-      }
-      d[i] = v;
-    }
-  }
-  for (let y = S - 1; y >= 0; y--) {
-    for (let x = S - 1; x >= 0; x--) {
-      const i = y * S + x;
-      let v = d[i]!;
-      if (x < S - 1) v = Math.min(v, d[i + 1]! + 3);
-      if (y < S - 1) {
-        v = Math.min(v, d[i + S]! + 3);
-        if (x < S - 1) v = Math.min(v, d[i + S + 1]! + 4);
-        if (x > 0) v = Math.min(v, d[i + S - 1]! + 4);
-      }
-      d[i] = v;
-    }
-  }
-  for (let i = 0; i < N; i++) d[i] /= 3;
-  return d;
-}
-
 type Rig = {
   img: Float32Array;
   alpha: Float32Array;
@@ -267,8 +222,6 @@ type Rig = {
   line: Float32Array;
   lineDist: Float32Array;
   lineZip: Uint8Array;
-  hair: Float32Array;
-  hairTop: number;
   cutout: boolean;
 };
 
@@ -283,19 +236,6 @@ async function loadStill(id: string): Promise<Float32Array> {
   return img;
 }
 
-function hueDeg(r: number, g: number, b: number): number {
-  const mx = Math.max(r, g, b);
-  const mn = Math.min(r, g, b);
-  const d = mx - mn;
-  if (d < 1e-4) return -1;
-  let h: number;
-  if (mx === r) h = ((g - b) / d) % 6;
-  else if (mx === g) h = (b - r) / d + 2;
-  else h = (r - g) / d + 4;
-  h *= 60;
-  return h < 0 ? h + 360 : h;
-}
-
 async function buildRig(id: OperatorId): Promise<Rig> {
   const tune = TUNING[id] ?? {};
   const img = await loadStill(id);
@@ -305,7 +245,6 @@ async function buildRig(id: OperatorId): Promise<Rig> {
   for (let i = 0; i < N; i++) alpha[i] = smoothstep(0.25, 0.75, rawAlpha[i]!);
 
   const energy = new Float32Array(N);
-  const skin = new Float32Array(N);
   for (let i = 0; i < N; i++) {
     const r = img[i * 3]!;
     const g = img[i * 3 + 1]!;
@@ -313,8 +252,6 @@ async function buildRig(id: OperatorId): Promise<Rig> {
     const mx = Math.max(r, g, b);
     const sat = mx < 1e-4 ? 0 : (mx - Math.min(r, g, b)) / mx;
     energy[i] = Math.pow(sat, 1.2) * smoothstep(0.3, 0.85, mx);
-    const h = hueDeg(r, g, b);
-    if (h >= 5 && h <= 45 && sat > 0.18 && sat < 0.72 && mx > 0.2 && r > b) skin[i] = alpha[i]! > 0.5 ? 1 : 0;
   }
 
   // Background plate: character removed and filled from the surroundings.
@@ -488,76 +425,9 @@ async function buildRig(id: OperatorId): Promise<Rig> {
     }
   }
 
-  // Hair: silhouette-near and crown pixels above the chin, away from skin.
-  const hair = new Float32Array(N);
-  let hairTop = 0;
-  if (cutout) {
-    const xs: number[] = [];
-    const ys: number[] = [];
-    for (let y = 0; y < S * 0.62; y++) for (let x = 0; x < S; x++) {
-      if (skin[y * S + x]! > 0) {
-        xs.push(x);
-        ys.push(y);
-      }
-    }
-    const hasFace = xs.length > N * 0.004;
-    const inside = distanceField((i) => alpha[i]! <= 0.5);
-    const outside = distanceField((i) => alpha[i]! > 0.5);
-    for (let i = 0; i < N; i++) if (alpha[i]! > 0.5) {
-      hairTop = Math.floor(i / S);
-      break;
-    }
-    let head: { fx0: number; fx1: number; fy0: number; fy1: number } | null = null;
-    if (hasFace) {
-      xs.sort((a, b) => a - b);
-      ys.sort((a, b) => a - b);
-      const pct = (arr: number[], p: number) => arr[Math.min(arr.length - 1, Math.floor(arr.length * p))]!;
-      head = { fx0: pct(xs, 0.05), fx1: pct(xs, 0.95), fy0: pct(ys, 0.05), fy1: pct(ys, 0.95) };
-    } else if (!tune.rigid) {
-      // No visible skin (hood, mask, coloured lighting): assume the head sits at the top of the silhouette.
-      let sx = 0;
-      let sw = 0;
-      const y1 = Math.min(S - 1, hairTop + Math.round(S * 0.18));
-      for (let y = hairTop; y <= y1; y++) for (let x = 0; x < S; x++) {
-        const a = alpha[y * S + x]!;
-        sx += x * a;
-        sw += a;
-      }
-      const hx = sw > 0 ? sx / sw : S / 2;
-      const hr = S * 0.09;
-      head = { fx0: hx - hr, fx1: hx + hr, fy0: hairTop + S * 0.05, fy1: hairTop + S * 0.05 + 2 * hr };
-    }
-    if (head) {
-      const { fx0, fx1, fy0, fy1 } = head;
-      const fcx = (fx0 + fx1) / 2;
-      const fcy = (fy0 + fy1) / 2;
-      const fr = Math.max(fx1 - fx0, fy1 - fy0) / 2;
-      const protect = blur(skin, 6);
-      const hairBottom = fy1 + 0.25 * fr;
-      for (let y = 0; y < S; y++) {
-        const region = 1 - smoothstep(hairBottom - 20, hairBottom + 10, y);
-        if (region <= 0) continue;
-        const crown = smoothstep(fy0 + 0.2 * fr, fy0 - 0.8 * fr, y);
-        for (let x = 0; x < S; x++) {
-          const i = y * S + x;
-          const edge = alpha[i]! > 0.5
-            ? 1 - smoothstep(4, 34, inside[i]!)
-            : 1 - smoothstep(0, HAIR_AMP_PX * 2.5, outside[i]!);
-          const away = smoothstep(0.7 * fr, 1.6 * fr, Math.hypot(x - fcx, y - fcy));
-          const guard = 1 - smoothstep(0.02, 0.2, protect[i]!);
-          const body = alpha[i]! > 0.5 || outside[i]! < HAIR_AMP_PX * 2.5 ? 1 : 0;
-          hair[i] = region * guard * body * Math.max(edge * away, crown * 0.9);
-        }
-      }
-    }
-    const soft = blur(hair, 5);
-    const k = tune.hair ?? 1;
-    for (let i = 0; i < N; i++) hair[i] = clamp01(soft[i]! * 1.2) * k;
-  }
-
   return {
     img, alpha, bg, auraW, flowX, flowY, flicker, rim, rimColor, rimGain, flame, sparkle, sparklePhase,
-    line, lineDist, lineZip, hair, hairTop, cutout,
+    line, lineDist, lineZip, cutout,
   };
 }
 
@@ -636,33 +506,10 @@ function renderFrame(rig: Rig, p: number): Buffer {
   const glow = blur(bloom, 4, 3);
 
   if (rig.cutout) {
-    // Hair sway: a wave travelling down from the crown, sampled backwards so strands overlap the aura.
-    const kw = TAU / 150;
-    const s1 = TAU * p;
-    const col = new Float32Array(3);
-    for (let y = 0; y < S; y++) {
-      const ph = kw * (y - rig.hairTop);
-      const sway = 0.7 * Math.sin(s1 - ph) + 0.3 * Math.sin(2 * s1 - 2 * ph + 1.1);
-      const lift = Math.sin(s1 - ph + 0.8);
-      for (let x = 0; x < S; x++) {
-        const i = y * S + x;
-        const h = rig.hair[i]!;
-        let a: number;
-        const o = i * 3;
-        col[0] = col[1] = col[2] = 0;
-        if (h > 0.01) {
-          const sx = x - HAIR_AMP_PX * h * sway;
-          const sy = y - HAIR_AMP_PX * 0.3 * h * lift;
-          a = sample1(rig.alpha, sx, sy);
-          sample3(lit, sx, sy, col, 0);
-        } else {
-          a = rig.alpha[i]!;
-          col[0] = lit[o]!;
-          col[1] = lit[o + 1]!;
-          col[2] = lit[o + 2]!;
-        }
-        for (let c = 0; c < 3; c++) out[o + c] = out[o + c]! * (1 - a) + col[c]! * a;
-      }
+    for (let i = 0; i < N; i++) {
+      const a = rig.alpha[i]!;
+      const o = i * 3;
+      for (let c = 0; c < 3; c++) out[o + c] = out[o + c]! * (1 - a) + lit[o + c]! * a;
     }
   } else {
     out.set(lit);
