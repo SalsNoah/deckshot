@@ -53,7 +53,7 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
 
       <div className="player-card" style={{ '--c': tier.color } as CSSProperties}>
         <div className="rank-emblem">
-          <RankBadge id={tier.id} size={58} />
+          <RankBadge id={tier.id} size={68} />
         </div>
         <div className="player-info">
           {editing ? (
