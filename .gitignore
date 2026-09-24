@@ -9,3 +9,7 @@ ios
 !.env.example
 *.local
 .vite
+
+# AI animation source frames (regenerable)
+public/portraits/anim-src/
+

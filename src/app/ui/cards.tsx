@@ -1,5 +1,5 @@
 import { Crosshair, EyeOff, Ghost, Heart, Shield, Swords } from 'lucide-react';
-import { forwardRef, type CSSProperties, type MouseEventHandler } from 'react';
+import { forwardRef, useEffect, useState, type CSSProperties, type MouseEventHandler } from 'react';
 import { card, hasAbility, type Unit, type UnitSnap } from '../../engine';
 import { CardIcon, cardColor, RARITY_COLOR, ROLE_COLOR, ROLE_LABEL, WeaponIcon } from './icons';
 import { publicAsset } from './assets';
@@ -47,23 +47,31 @@ export function portraitAnimIds(): readonly string[] {
   return OPERATOR_ANIM_IDS;
 }
 
-/** Neon card portrait. Animation-rare swaps the still for an analyzed looping GIF. */
+/** Neon card portrait. Animation-rare swaps the still for a generated looping GIF. */
 export function Portrait({ cardId, size = 56, flow }: { cardId: string; size?: number; flow?: boolean }) {
   const def = card(cardId);
   const accent = cardColor(cardId);
-  const useAnim = Boolean(flow && hasPortraitAnim(cardId));
-  const src = hasCardArt(cardId)
-    ? (useAnim ? cardAnimSrc(cardId) : cardArtSrc(cardId))
-    : undefined;
-  if (src) {
+  const wantAnim = Boolean(flow && hasPortraitAnim(cardId));
+  const still = hasCardArt(cardId) ? cardArtSrc(cardId) : undefined;
+  const anim = wantAnim ? cardAnimSrc(cardId) : undefined;
+  const [src, setSrc] = useState<string | undefined>(anim ?? still);
+
+  useEffect(() => {
+    setSrc(anim ?? still);
+  }, [anim, still]);
+
+  if (still || anim) {
     return (
       <img
-        className={`portrait${useAnim ? ' portrait-anim' : ''}`}
-        src={src}
+        className={`portrait${wantAnim && src === anim ? ' portrait-anim' : ''}`}
+        src={src ?? still}
         alt={def.en}
         width={size}
         height={size}
         draggable={false}
+        onError={() => {
+          if (still && src !== still) setSrc(still);
+        }}
         style={{ width: size, height: size, '--role': accent } as CSSProperties}
       />
     );

@@ -17,7 +17,7 @@ export function AnimPreview({ onBack }: { onBack: () => void }) {
         <h2>アニメーションプレビュー</h2>
         <span className="deck-count">{ids.length}</span>
       </div>
-      <p className="anim-preview-note">アニメレアGIFを全キャラ表示（タップで拡大）</p>
+      <p className="anim-preview-note">肖像を参照して新規生成したGIF（未生成は静画）。タップで拡大</p>
       <div className="anim-preview-grid">
         {ids.map((id) => {
           const def = card(id);
