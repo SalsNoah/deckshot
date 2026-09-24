@@ -12,8 +12,10 @@ const RARITY_LABEL: Record<Rarity, string> = { common: 'COMMON', rare: 'RARE', e
 /** Wait before the next card flips during "flip all", long enough for that rarity's effect. */
 const FLIP_GAP: Record<Rarity, number> = { common: 380, rare: 420, epic: 760, legend: 2700 };
 
-export function PackOpening({ cards, fresh, onClose, onAgain, againLabel }: {
+export function PackOpening({ cards, kira, fresh, onClose, onAgain, againLabel }: {
   cards: string[];
+  /** Per slot: kira result already decided at pull time (operators only). */
+  kira: boolean[];
   /** Per slot: true when this pull is the player's first copy. */
   fresh: boolean[];
   onClose: () => void;
@@ -24,7 +26,7 @@ export function PackOpening({ cards, fresh, onClose, onAgain, againLabel }: {
   const [flipped, setFlipped] = useState<boolean[]>(() => cards.map(() => false));
   const [spotlight, setSpotlight] = useState<number | null>(null);
   const [burstAt, setBurstAt] = useState<number | null>(null);
-  const [peek, setPeek] = useState<string | null>(null);
+  const [peek, setPeek] = useState<number | null>(null);
   const [flippingAll, setFlippingAll] = useState(false);
   const timers = useRef<number[]>([]);
   const dragX = useRef<number | null>(null);
@@ -83,12 +85,18 @@ export function PackOpening({ cards, fresh, onClose, onAgain, againLabel }: {
 
   const reveal = (i: number) => {
     const r = rarities[i];
+    const isKira = kira[i];
     setFlipped((f) => f.map((v, j) => (j === i ? true : v)));
     sfx.cardFlip(r);
+    if (isKira) {
+      vibrate([30, 40, 30]);
+      setBurstAt(i);
+      later(900, () => setBurstAt((b) => (b === i ? null : b)));
+    }
     if (r === 'legend') {
       vibrate([40, 60, 120]);
       later(380, () => setSpotlight(i));
-    } else if (r === 'epic') {
+    } else if (r === 'epic' && !isKira) {
       vibrate(40);
       setBurstAt(i);
       later(900, () => setBurstAt((b) => (b === i ? null : b)));
@@ -106,7 +114,7 @@ export function PackOpening({ cards, fresh, onClose, onAgain, againLabel }: {
     cards.forEach((_, i) => {
       if (flipped[i]) return;
       later(at, () => reveal(i));
-      at += FLIP_GAP[rarities[i]];
+      at += FLIP_GAP[rarities[i]] + (kira[i] ? 120 : 0);
     });
     later(at, () => setFlippingAll(false));
   };
@@ -158,10 +166,11 @@ export function PackOpening({ cards, fresh, onClose, onAgain, againLabel }: {
           <div className="pack-cards">
             {cards.map((id, i) => {
               const r = rarities[i];
+              const isKira = kira[i];
               return (
                 <div
                   key={`${id}-${i}`}
-                  className={`pack-card r-${r} ${flipped[i] ? 'flipped' : ''} ${burstAt === i ? 'burst' : ''}`}
+                  className={`pack-card r-${r} ${isKira ? 'kira' : ''} ${flipped[i] ? 'flipped' : ''} ${burstAt === i ? 'burst' : ''}`}
                   style={{ '--i': i, '--dx': `${(1 - i) * 112}px`, '--r': RARITY_COLOR[r] } as CSSProperties}
                 >
                   <div className="pack-card-inner">
@@ -169,11 +178,12 @@ export function PackOpening({ cards, fresh, onClose, onAgain, againLabel }: {
                       <span className="pack-card-emblem" />
                     </button>
                     <div className="pack-card-front">
-                      <HandCard cardId={id} cost={card(id).cost} onClick={() => setPeek(id)} />
+                      <HandCard cardId={id} cost={card(id).cost} kira={isKira} onClick={() => setPeek(i)} />
                     </div>
                   </div>
                   <div className="pack-card-tag">
                     {flipped[i] && <span style={{ color: RARITY_COLOR[r] }}>{RARITY_LABEL[r]}</span>}
+                    {flipped[i] && isKira && <b className="pack-kira-tag">KIRA</b>}
                     {flipped[i] && fresh[i] && <em>NEW</em>}
                   </div>
                 </div>
@@ -201,19 +211,19 @@ export function PackOpening({ cards, fresh, onClose, onAgain, againLabel }: {
           <div className="pack-spot-rays" />
           <div className="pack-spot-flash" />
           <div className="pack-spot-card">
-            <HandCard cardId={cards[spotlight]} cost={card(cards[spotlight]).cost} />
+            <HandCard cardId={cards[spotlight]} cost={card(cards[spotlight]).cost} kira={kira[spotlight]} />
           </div>
           <div className="pack-spot-title">
             <b>LEGEND</b>
-            <span>{card(cards[spotlight]).en}</span>
+            <span>{card(cards[spotlight]).en}{kira[spotlight] ? ' ★' : ''}</span>
           </div>
         </div>
       )}
 
-      {peek && (
+      {peek !== null && (
         <div className="modal-bg" onClick={() => setPeek(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <CardDetail cardId={peek} />
+            <CardDetail cardId={cards[peek]} kira={kira[peek]} />
             <button className="btn ghost small" onClick={() => setPeek(null)}>閉じる</button>
           </div>
         </div>

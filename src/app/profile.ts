@@ -15,6 +15,8 @@ export interface Profile {
   deck: string[];
   /** Owned card copies. */
   owned: Record<string, number>;
+  /** Owned kira (shiny) operator copies. Cosmetic; still counts via `owned`. */
+  kiraOwned: Record<string, number>;
   /** Paid gacha tickets (1 ticket = 1 pull of 3 cards). */
   gachaTickets: number;
   /** Local calendar date `YYYY-MM-DD` of last free gacha, or null. */
@@ -45,6 +47,7 @@ const DEFAULT: Profile = {
   deckId: 'custom',
   deck: STARTER.deck,
   owned: STARTER.owned,
+  kiraOwned: {},
   gachaTickets: 3,
   lastFreeGacha: null,
   difficulty: 'normal',
@@ -57,6 +60,14 @@ function migrate(raw: Partial<Profile> & Record<string, unknown>): Profile {
     ...DEFAULT,
     ...raw,
     owned: raw.owned && typeof raw.owned === 'object' ? { ...raw.owned } : { ...DEFAULT.owned },
+    kiraOwned: (() => {
+      if (!raw.kiraOwned || typeof raw.kiraOwned !== 'object') return {};
+      const out: Record<string, number> = {};
+      for (const [id, n] of Object.entries(raw.kiraOwned as Record<string, unknown>)) {
+        if (typeof n === 'number' && n > 0) out[id] = Math.floor(n);
+      }
+      return out;
+    })(),
     deck: Array.isArray(raw.deck) ? [...raw.deck] : [...DEFAULT.deck],
     gachaTickets: typeof raw.gachaTickets === 'number' ? raw.gachaTickets : DEFAULT.gachaTickets,
     lastFreeGacha: typeof raw.lastFreeGacha === 'string' ? raw.lastFreeGacha : null,
@@ -89,8 +100,20 @@ export function loadProfile(): Profile {
   } catch {
     // ignore corrupt storage
   }
-  return { ...DEFAULT, name: `Player${Math.floor(1000 + Math.random() * 9000)}`, owned: { ...DEFAULT.owned }, deck: [...DEFAULT.deck] };
+  return {
+    ...DEFAULT,
+    name: `Player${Math.floor(1000 + Math.random() * 9000)}`,
+    owned: { ...DEFAULT.owned },
+    kiraOwned: {},
+    deck: [...DEFAULT.deck],
+  };
 }
+
+/** True when the player owns at least one kira copy of this operator. */
+export function hasKira(p: Profile, cardId: string): boolean {
+  return (p.kiraOwned[cardId] ?? 0) > 0;
+}
+
 
 export function saveProfile(p: Profile): void {
   try {

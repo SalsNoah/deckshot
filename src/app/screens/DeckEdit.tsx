@@ -3,6 +3,7 @@ import {
   ALL_CARDS, DECK_SIZE, DECKS, MAX_COPIES, card, countCards, validateDeck, type CardType,
 } from '../../engine';
 import type { Profile } from '../profile';
+import { hasKira } from '../profile';
 import { CardDetail, HandCard } from '../ui/cards';
 import { cssUrl } from '../ui/assets';
 import { TYPE_LABEL } from '../ui/text';
@@ -140,10 +141,11 @@ export function DeckEdit({ profile, onChange, onBack }: {
                 cardId={c.id}
                 cost={c.cost}
                 disabled={full && inDeck === 0}
+                kira={hasKira(profile, c.id)}
                 onClick={() => (inDeck > 0 && full ? remove(c.id) : add(c.id))}
               />
               <div className="pool-meta">
-                <span>所持 {owned}</span>
+                <span>所持 {owned}{hasKira(profile, c.id) ? ' ★' : ''}</span>
                 <span className={inDeck ? 'on' : ''}>編成 {inDeck}/{MAX_COPIES}</span>
               </div>
               <div className="pool-actions">
@@ -165,7 +167,7 @@ export function DeckEdit({ profile, onChange, onBack }: {
       {peek && (
         <div className="modal-bg" onClick={() => setPeek(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <CardDetail cardId={peek} />
+            <CardDetail cardId={peek} kira={hasKira(profile, peek)} />
             <button className="btn ghost small" onClick={() => setPeek(null)}>閉じる</button>
           </div>
         </div>

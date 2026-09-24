@@ -1,7 +1,7 @@
 import { Dices, Ticket } from 'lucide-react';
 import { useState, type CSSProperties } from 'react';
 import {
-  canFreeGacha, freeGachaDate, GACHA_PULL_SIZE, grantCards, pullGacha, TICKET_PACKS,
+  canFreeGacha, freeGachaDate, GACHA_PULL_SIZE, grantCards, grantKira, pullGacha, TICKET_PACKS,
 } from '../gacha';
 import type { Profile } from '../profile';
 import { unlockAudio } from '../sfx';
@@ -14,7 +14,7 @@ export function Gacha({ profile, onChange, onBack }: {
   onBack: () => void;
 }) {
   const free = canFreeGacha(profile.lastFreeGacha);
-  const [opening, setOpening] = useState<{ cards: string[]; fresh: boolean[]; key: number } | null>(null);
+  const [opening, setOpening] = useState<{ cards: string[]; kira: boolean[]; fresh: boolean[]; key: number } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const flash = (msg: string) => {
@@ -33,13 +33,16 @@ export function Gacha({ profile, onChange, onBack }: {
     }
     unlockAudio();
     const pulled = pullGacha();
-    const fresh = pulled.map((id, i) => !profile.owned[id] && pulled.indexOf(id) === i);
+    const cards = pulled.map((p) => p.cardId);
+    const kira = pulled.map((p) => p.kira);
+    const fresh = cards.map((id, i) => !profile.owned[id] && cards.indexOf(id) === i);
     onChange({
       owned: grantCards(profile.owned, pulled),
+      kiraOwned: grantKira(profile.kiraOwned ?? {}, pulled),
       gachaTickets: mode === 'ticket' ? profile.gachaTickets - 1 : profile.gachaTickets,
       lastFreeGacha: mode === 'free' ? freeGachaDate() : profile.lastFreeGacha,
     });
-    setOpening({ cards: pulled, fresh, key: Date.now() });
+    setOpening({ cards, kira, fresh, key: Date.now() });
   };
 
   if (opening) {
@@ -47,6 +50,7 @@ export function Gacha({ profile, onChange, onBack }: {
       <PackOpening
         key={opening.key}
         cards={opening.cards}
+        kira={opening.kira}
         fresh={opening.fresh}
         onClose={() => setOpening(null)}
         onAgain={profile.gachaTickets > 0 ? () => runPull('ticket') : undefined}

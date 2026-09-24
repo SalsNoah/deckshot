@@ -1,6 +1,9 @@
-import { ALL_CARDS, type Rarity } from '../engine';
+import { ALL_CARDS, card, type Rarity } from '../engine';
 
 export const GACHA_PULL_SIZE = 3;
+
+/** Operator pulls become kira (shiny) at this rate. Rolled silently. */
+export const KIRA_CHANCE = 0.1;
 
 /** One ticket = one 3-card pull. */
 export const TICKET_PACKS: { id: string; tickets: number; label: string; priceLabel: string }[] = [
@@ -23,6 +26,12 @@ const BY_RARITY: Record<Rarity, string[]> = {
   legend: [],
 };
 for (const c of ALL_CARDS) BY_RARITY[c.rarity].push(c.id);
+
+export interface PullResult {
+  cardId: string;
+  /** True when this pull is a kira operator. */
+  kira: boolean;
+}
 
 function todayKey(d = new Date()): string {
   const y = d.getFullYear();
@@ -55,14 +64,36 @@ function pickCard(rng: () => number): string {
   return pool[Math.floor(rng() * pool.length)] ?? ALL_CARDS[0].id;
 }
 
-/** Draw GACHA_PULL_SIZE cards. Uses Math.random unless rng provided. */
-export function pullGacha(rng: () => number = Math.random): string[] {
-  return Array.from({ length: GACHA_PULL_SIZE }, () => pickCard(rng));
+/** Operators (characters) can become kira. Gear / tactics never do. */
+export function canRollKira(cardId: string): boolean {
+  return card(cardId).type === 'operator';
+}
+
+/** Draw GACHA_PULL_SIZE cards. Kira is rolled silently for operators. */
+export function pullGacha(rng: () => number = Math.random): PullResult[] {
+  return Array.from({ length: GACHA_PULL_SIZE }, () => {
+    const cardId = pickCard(rng);
+    const kira = canRollKira(cardId) && rng() < KIRA_CHANCE;
+    return { cardId, kira };
+  });
 }
 
 /** Merge pulled card ids into an owned map (duplicates stack). */
-export function grantCards(owned: Record<string, number>, pulled: string[]): Record<string, number> {
+export function grantCards(owned: Record<string, number>, pulled: PullResult[] | string[]): Record<string, number> {
   const next = { ...owned };
-  for (const id of pulled) next[id] = (next[id] ?? 0) + 1;
+  for (const p of pulled) {
+    const id = typeof p === 'string' ? p : p.cardId;
+    next[id] = (next[id] ?? 0) + 1;
+  }
+  return next;
+}
+
+/** Merge kira results into a kira-owned map (operators only). */
+export function grantKira(kiraOwned: Record<string, number>, pulled: PullResult[]): Record<string, number> {
+  const next = { ...kiraOwned };
+  for (const p of pulled) {
+    if (!p.kira) continue;
+    next[p.cardId] = (next[p.cardId] ?? 0) + 1;
+  }
   return next;
 }

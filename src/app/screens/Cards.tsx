@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import { ALL_CARDS, STREAK_ORDER, STREAKS, ZONE_MODS, type CardType } from '../../engine';
-import type { Profile } from '../profile';
+import { hasKira, type Profile } from '../profile';
 import { CardDetail, HandCard } from '../ui/cards';
 import { cssUrl } from '../ui/assets';
 import { StreakIcon } from '../ui/icons';
@@ -18,6 +18,8 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
   const [peek, setPeek] = useState<string | null>(null);
   const list = ALL_CARDS.filter((c) => c.type === tab).sort((a, b) => a.cost - b.cost);
   const ownedKinds = Object.values(profile.owned).filter((n) => n > 0).length;
+  const kiraKinds = Object.values(profile.kiraOwned ?? {}).filter((n) => n > 0).length;
+  const opsTotal = ALL_CARDS.filter((c) => c.type === 'operator').length;
 
   return (
     <div className="screen screen-scroll has-art-bg" style={{ '--screen-bg': cssUrl('bgs/bg-cards.webp') } as CSSProperties}>
@@ -26,6 +28,9 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
         <h2>カード一覧</h2>
         <span className="deck-count">{ownedKinds}/{ALL_CARDS.length}</span>
       </div>
+      {tab === 'operator' && (
+        <div className="kira-progress">キラ {kiraKinds}/{opsTotal}</div>
+      )}
       <div className="tabs">
         {TABS.map((t) => (
           <button key={t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>{t.name}</button>
@@ -35,16 +40,26 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
         <div className="card-grid">
           {list.map((c) => {
             const n = profile.owned[c.id] ?? 0;
+            const kiraN = profile.kiraOwned?.[c.id] ?? 0;
+            const showKira = hasKira(profile, c.id);
             const locked = n <= 0;
             return (
-              <div key={c.id} className={`collect-card ${locked ? 'locked' : ''}`}>
+              <div key={c.id} className={`collect-card ${locked ? 'locked' : ''} ${showKira ? 'has-kira' : ''}`}>
                 <HandCard
                   cardId={c.id}
                   cost={c.cost}
                   disabled={locked}
+                  kira={showKira}
                   onClick={() => !locked && setPeek(c.id)}
                 />
-                <span className="collect-count">{locked ? '未所持' : `×${n}`}</span>
+                <span className="collect-count">
+                  {locked ? '未所持' : (
+                    <>
+                      ×{n}
+                      {kiraN > 0 && <em className="collect-kira"> キラ×{kiraN}</em>}
+                    </>
+                  )}
+                </span>
               </div>
             );
           })}
@@ -83,7 +98,7 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
       {peek && (
         <div className="modal-bg" onClick={() => setPeek(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <CardDetail cardId={peek} />
+            <CardDetail cardId={peek} kira={hasKira(profile, peek)} />
             <button className="btn ghost small" onClick={() => setPeek(null)}>閉じる</button>
           </div>
         </div>

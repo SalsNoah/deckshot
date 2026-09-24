@@ -70,12 +70,14 @@ export function StatRow({ atk, hp, aim, base, size = 'sm' }: {
   );
 }
 
-export function HandCard({ cardId, cost, selected, disabled, used, onClick }: {
+export function HandCard({ cardId, cost, selected, disabled, used, kira, onClick }: {
   cardId: string;
   cost: number;
   selected?: boolean;
   disabled?: boolean;
   used?: boolean;
+  /** Gold-border glossy variant (operators). */
+  kira?: boolean;
   onClick?: MouseEventHandler;
 }) {
   const def = card(cardId);
@@ -83,7 +85,7 @@ export function HandCard({ cardId, cost, selected, disabled, used, onClick }: {
   const art = hasCardArt(cardId);
   return (
     <button
-      className={`hcard ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''} ${used ? 'used' : ''} type-${def.type} ${art ? 'has-art' : ''}`}
+      className={`hcard ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''} ${used ? 'used' : ''} ${kira ? 'kira' : ''} type-${def.type} ${art ? 'has-art' : ''}`}
       style={{ '--c': color, '--r': RARITY_COLOR[def.rarity] } as CSSProperties}
       onClick={onClick}
     >
@@ -91,6 +93,7 @@ export function HandCard({ cardId, cost, selected, disabled, used, onClick }: {
         {art ? <Portrait cardId={cardId} size={140} /> : <CardIcon cardId={cardId} size={36} />}
       </div>
       <div className="hcard-shade" aria-hidden />
+      {kira && <div className="hcard-kira-foil" aria-hidden />}
       <div className="hcard-cost">{cost}</div>
       <div className="hcard-footer">
         <div className="hcard-name">{def.en}</div>
@@ -100,12 +103,18 @@ export function HandCard({ cardId, cost, selected, disabled, used, onClick }: {
           <div className="hcard-type">{TYPE_LABEL[def.type]}</div>
         )}
       </div>
+      {kira && <div className="hcard-kira-badge">KIRA</div>}
       {used && <div className="hcard-used">予約済</div>}
     </button>
   );
 }
 
-export function CardDetail({ cardId, unit, compact }: { cardId: string; unit?: UnitSnap; compact?: boolean }) {
+export function CardDetail({ cardId, unit, compact, kira }: {
+  cardId: string;
+  unit?: UnitSnap;
+  compact?: boolean;
+  kira?: boolean;
+}) {
   const def = card(cardId);
   const color = cardColor(cardId);
   const kws = cardKeywords(cardId).filter((k) => !def.text?.includes(`【${k.name}】`));
@@ -113,23 +122,26 @@ export function CardDetail({ cardId, unit, compact }: { cardId: string; unit?: U
   const isOp = def.type === 'operator';
   const art = hasCardArt(cardId);
   return (
-    <div className={`cdetail ${compact ? 'compact' : ''} type-${def.type} ${art ? 'has-art' : ''}`} style={{ '--c': color, '--r': RARITY_COLOR[def.rarity] } as CSSProperties}>
+    <div className={`cdetail ${compact ? 'compact' : ''} type-${def.type} ${art ? 'has-art' : ''} ${kira ? 'kira' : ''}`} style={{ '--c': color, '--r': RARITY_COLOR[def.rarity] } as CSSProperties}>
       {art && (
         <div className="cdetail-hero" aria-hidden>
           <Portrait cardId={cardId} size={compact ? 220 : 360} />
           <div className="cdetail-hero-shade" />
+          {kira && <div className="cdetail-kira-foil" aria-hidden />}
         </div>
       )}
+      {kira && <div className="cdetail-kira-badge">KIRA</div>}
       <div className="cdetail-body">
         <div className="cdetail-head">
           <div className="cdetail-cost">{def.cost}</div>
           <div className="cdetail-title">
-            <div className="cdetail-en">{def.en}</div>
+            <div className="cdetail-en">{def.en}{kira ? ' ★' : ''}</div>
             <div className="cdetail-name">
               {def.name}
               <span className="cdetail-type">
                 {isOp ? ROLE_LABEL[def.role!] : TYPE_LABEL[def.type]}
                 {def.speed !== undefined && def.type === 'tactic' ? `・速${def.speed}` : ''}
+                {kira ? '・キラ' : ''}
               </span>
             </div>
           </div>
