@@ -103,7 +103,6 @@ export function HandCard({ cardId, cost, selected, disabled, used, kira, onClick
           <div className="hcard-type">{TYPE_LABEL[def.type]}</div>
         )}
       </div>
-      {kira && <div className="hcard-kira-badge">KIRA</div>}
       {used && <div className="hcard-used">予約済</div>}
     </button>
   );
@@ -130,18 +129,16 @@ export function CardDetail({ cardId, unit, compact, kira }: {
           {kira && <div className="cdetail-kira-foil" aria-hidden />}
         </div>
       )}
-      {kira && <div className="cdetail-kira-badge">KIRA</div>}
       <div className="cdetail-body">
         <div className="cdetail-head">
           <div className="cdetail-cost">{def.cost}</div>
           <div className="cdetail-title">
-            <div className="cdetail-en">{def.en}{kira ? ' ★' : ''}</div>
+            <div className="cdetail-en">{def.en}</div>
             <div className="cdetail-name">
               {def.name}
               <span className="cdetail-type">
                 {isOp ? ROLE_LABEL[def.role!] : TYPE_LABEL[def.type]}
                 {def.speed !== undefined && def.type === 'tactic' ? `・速${def.speed}` : ''}
-                {kira ? '・キラ' : ''}
               </span>
             </div>
           </div>

@@ -18,8 +18,6 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
   const [peek, setPeek] = useState<string | null>(null);
   const list = ALL_CARDS.filter((c) => c.type === tab).sort((a, b) => a.cost - b.cost);
   const ownedKinds = Object.values(profile.owned).filter((n) => n > 0).length;
-  const kiraKinds = Object.values(profile.kiraOwned ?? {}).filter((n) => n > 0).length;
-  const opsTotal = ALL_CARDS.filter((c) => c.type === 'operator').length;
 
   return (
     <div className="screen screen-scroll has-art-bg" style={{ '--screen-bg': cssUrl('bgs/bg-cards.webp') } as CSSProperties}>
@@ -28,9 +26,6 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
         <h2>カード一覧</h2>
         <span className="deck-count">{ownedKinds}/{ALL_CARDS.length}</span>
       </div>
-      {tab === 'operator' && (
-        <div className="kira-progress">キラ {kiraKinds}/{opsTotal}</div>
-      )}
       <div className="tabs">
         {TABS.map((t) => (
           <button key={t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>{t.name}</button>
@@ -40,7 +35,6 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
         <div className="card-grid">
           {list.map((c) => {
             const n = profile.owned[c.id] ?? 0;
-            const kiraN = profile.kiraOwned?.[c.id] ?? 0;
             const showKira = hasKira(profile, c.id);
             const locked = n <= 0;
             return (
@@ -52,14 +46,7 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
                   kira={showKira}
                   onClick={() => !locked && setPeek(c.id)}
                 />
-                <span className="collect-count">
-                  {locked ? '未所持' : (
-                    <>
-                      ×{n}
-                      {kiraN > 0 && <em className="collect-kira"> キラ×{kiraN}</em>}
-                    </>
-                  )}
-                </span>
+                <span className="collect-count">{locked ? '未所持' : `×${n}`}</span>
               </div>
             );
           })}

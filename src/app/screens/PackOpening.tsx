@@ -183,7 +183,6 @@ export function PackOpening({ cards, kira, fresh, onClose, onAgain, againLabel }
                   </div>
                   <div className="pack-card-tag">
                     {flipped[i] && <span style={{ color: RARITY_COLOR[r] }}>{RARITY_LABEL[r]}</span>}
-                    {flipped[i] && isKira && <b className="pack-kira-tag">KIRA</b>}
                     {flipped[i] && fresh[i] && <em>NEW</em>}
                   </div>
                 </div>
@@ -215,7 +214,7 @@ export function PackOpening({ cards, kira, fresh, onClose, onAgain, againLabel }
           </div>
           <div className="pack-spot-title">
             <b>LEGEND</b>
-            <span>{card(cards[spotlight]).en}{kira[spotlight] ? ' ★' : ''}</span>
+            <span>{card(cards[spotlight]).en}</span>
           </div>
         </div>
       )}

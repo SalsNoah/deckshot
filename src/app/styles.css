@@ -700,14 +700,6 @@ input { font: inherit; }
   background-size: 240% 100%, 100% 100%;
   animation: packFoil 2.4s ease-in-out infinite;
 }
-.hcard-kira-badge {
-  position: absolute; top: 5px; right: 4px; z-index: 5;
-  padding: 1px 4px; border-radius: 3px;
-  font-family: var(--font-num); font-weight: 700; font-size: 8px; letter-spacing: 0.06em;
-  color: #1a1204; background: linear-gradient(180deg, #ffe7a3, #d4a017);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
-  pointer-events: none;
-}
 .cdetail.kira {
   border-color: #e8c547;
   border-top-color: #ffe7a3;
@@ -718,13 +710,6 @@ input { font: inherit; }
   background: linear-gradient(115deg, transparent 30%, rgba(255, 240, 180, 0.5) 48%, transparent 62%);
   background-size: 240% 100%;
   animation: packFoil 2.6s ease-in-out infinite;
-}
-.cdetail-kira-badge {
-  position: absolute; top: 10px; right: 10px; z-index: 6;
-  padding: 3px 8px; border-radius: 4px;
-  font-family: var(--font-num); font-weight: 700; font-size: 11px; letter-spacing: 0.12em;
-  color: #1a1204; background: linear-gradient(180deg, #ffe7a3, #d4a017);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 .pack-card.kira.flipped .pack-card-front .hcard {
   border: 1.5px solid #e8c547 !important;
@@ -743,20 +728,6 @@ input { font: inherit; }
     0 0 0 2px #e8c547,
     0 0 0 4px rgba(138, 106, 24, 0.9),
     0 0 28px 4px rgba(255, 200, 70, 0.75) !important;
-}
-.pack-kira-tag {
-  font-style: normal; font-family: var(--font-num); font-weight: 700; font-size: 10px;
-  letter-spacing: 0.12em; color: #ffe7a3;
-  text-shadow: 0 0 10px rgba(255, 200, 70, 0.8);
-  animation: popIn 0.3s 0.28s both;
-}
-.collect-kira {
-  font-style: normal; color: #ffe7a3; margin-left: 2px;
-}
-.kira-progress {
-  font-family: var(--font-jp); font-size: 12px; font-weight: 700;
-  color: #ffe7a3; text-align: right; margin: -4px 4px 6px;
-  text-shadow: 0 0 8px rgba(255, 200, 70, 0.35);
 }
 @keyframes kiraShine {
   0% { background-position: 0% 0; }

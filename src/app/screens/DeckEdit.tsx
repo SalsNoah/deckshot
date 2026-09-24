@@ -145,7 +145,7 @@ export function DeckEdit({ profile, onChange, onBack }: {
                 onClick={() => (inDeck > 0 && full ? remove(c.id) : add(c.id))}
               />
               <div className="pool-meta">
-                <span>所持 {owned}{hasKira(profile, c.id) ? ' ★' : ''}</span>
+                <span>所持 {owned}</span>
                 <span className={inDeck ? 'on' : ''}>編成 {inDeck}/{MAX_COPIES}</span>
               </div>
               <div className="pool-actions">
