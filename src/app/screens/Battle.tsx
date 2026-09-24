@@ -143,7 +143,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, flowOwned }: {
   onFinish: (r: MatchResult) => number | null;
   /** Player's owned kira operators — cosmetic on hand / detail. */
   kiraOwned?: Record<string, number>;
-  /** Player's owned hair-flow operators — portrait animation. */
+  /** Player's owned motion-anim operators — portrait GIF swap. */
   flowOwned?: Record<string, number>;
 }) {
   const me = conn.initialView.me;

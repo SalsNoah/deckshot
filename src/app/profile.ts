@@ -17,7 +17,7 @@ export interface Profile {
   owned: Record<string, number>;
   /** Owned kira (shiny) operator copies. Cosmetic; still counts via `owned`. */
   kiraOwned: Record<string, number>;
-  /** Owned hair-flow animated operator copies. Cosmetic; still counts via `owned`. */
+  /** Owned motion-animated operator copies. Cosmetic; still counts via `owned`. */
   flowOwned: Record<string, number>;
   /** Paid gacha tickets (1 ticket = 1 pull of 3 cards). */
   gachaTickets: number;
@@ -126,7 +126,7 @@ export function hasKira(p: { kiraOwned?: Record<string, number> } | null | undef
   return (p?.kiraOwned?.[cardId] ?? 0) > 0;
 }
 
-/** True when the player owns at least one hair-flow copy of this operator. */
+/** True when the player owns at least one motion-animated copy of this operator. */
 export function hasFlow(p: { flowOwned?: Record<string, number> } | null | undefined, cardId: string): boolean {
   return (p?.flowOwned?.[cardId] ?? 0) > 0;
 }

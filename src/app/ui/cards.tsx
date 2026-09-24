@@ -27,7 +27,7 @@ function cardArtSrc(id: string): string {
   return publicAsset(`portraits/${id}.webp`);
 }
 
-/** Pre-baked hair-flow loop GIF (see `npm run portraits:anim`). */
+/** Pre-baked motion-analyzed loop GIF (see `npm run portraits:anim`). */
 function cardAnimSrc(id: string): string {
   return publicAsset(`portraits/anim/${id}.gif`);
 }
@@ -40,7 +40,7 @@ export function hasPortraitAnim(cardId: string): boolean {
   return OPERATOR_ANIM_IDS.has(cardId);
 }
 
-/** Neon card portrait. Animation-rare swaps the still for a looping GIF. */
+/** Neon card portrait. Animation-rare swaps the still for an analyzed looping GIF. */
 export function Portrait({ cardId, size = 56, flow }: { cardId: string; size?: number; flow?: boolean }) {
   const def = card(cardId);
   const accent = cardColor(cardId);
@@ -96,7 +96,7 @@ export function HandCard({ cardId, cost, selected, disabled, used, kira, flow, o
   used?: boolean;
   /** Gold-border glossy variant (operators). */
   kira?: boolean;
-  /** Hair-flow portrait animation (rare gacha cosmetic). */
+  /** Portrait motion animation (rare gacha cosmetic). */
   flow?: boolean;
   onClick?: MouseEventHandler;
 }) {

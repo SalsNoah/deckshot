@@ -16,7 +16,7 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
   cards: string[];
   /** Per slot: kira result already decided at pull time (operators only). */
   kira: boolean[];
-  /** Per slot: hair-flow cosmetic already decided at pull time. */
+  /** Per slot: motion cosmetic already decided at pull time. */
   flow: boolean[];
   /** Per slot: true when this pull is the player's first copy. */
   fresh: boolean[];

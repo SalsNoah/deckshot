@@ -11,7 +11,7 @@ export const GACHA_MULTI_TICKETS = GACHA_MULTI_PACKS;
 /** Operator pulls become kira (shiny) at this rate. Rolled silently. */
 export const KIRA_CHANCE = 0.1;
 
-/** Operator pulls get hair-flow portrait animation at this rate. Rolled silently. */
+/** Operator pulls get analyzed portrait animation at this rate. Rolled silently. */
 export const FLOW_CHANCE = 0.01;
 
 /** One ticket = one 3-card pull. */
@@ -40,7 +40,7 @@ export interface PullResult {
   cardId: string;
   /** True when this pull is a kira operator. */
   kira: boolean;
-  /** True when this pull has hair-flow portrait animation. */
+  /** True when this pull has motion-analyzed portrait animation. */
   flow: boolean;
 }
 
@@ -117,7 +117,7 @@ export function grantKira(kiraOwned: Record<string, number>, pulled: PullResult[
   return next;
 }
 
-/** Merge hair-flow results into a flow-owned map (operators only). */
+/** Merge motion-anim results into a flow-owned map (operators only). */
 export function grantFlow(flowOwned: Record<string, number>, pulled: PullResult[]): Record<string, number> {
   const next = { ...flowOwned };
   for (const p of pulled) {

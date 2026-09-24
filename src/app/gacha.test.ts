@@ -25,7 +25,7 @@ describe('kira gacha', () => {
     expect(pulled[0].flow).toBe(false);
   });
 
-  it('rolls hair-flow silently at FLOW_CHANCE for operators', () => {
+  it('rolls portrait motion silently at FLOW_CHANCE for operators', () => {
     let i = 0;
     // rarity → common, pool index 0, kira no, flow yes
     const rng = () => {
