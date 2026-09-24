@@ -110,7 +110,7 @@ export function loadProfile(): Profile {
 }
 
 /** True when the player owns at least one kira copy of this operator. */
-export function hasKira(p: Pick<Profile, 'kiraOwned'> | null | undefined, cardId: string): boolean {
+export function hasKira(p: { kiraOwned?: Record<string, number> } | null | undefined, cardId: string): boolean {
   return (p?.kiraOwned?.[cardId] ?? 0) > 0;
 }
 
