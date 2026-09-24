@@ -145,7 +145,7 @@ export function App() {
         />
       )}
       {screen.name === 'battle' && (
-        <Battle key={screen.key} conn={screen.conn} onExit={exitBattle} onFinish={onFinish} />
+        <Battle key={screen.key} conn={screen.conn} onExit={exitBattle} onFinish={onFinish} kiraOwned={profile.kiraOwned} />
       )}
       {screen.name === 'howto' && (
         <HowTo onBack={() => setScreen(screen.next ?? { name: 'title' })} />

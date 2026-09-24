@@ -727,7 +727,22 @@ input { font: inherit; }
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 .pack-card.kira.flipped .pack-card-front .hcard {
-  box-shadow: 0 0 0 2px #e8c547, 0 0 26px 4px rgba(255, 200, 70, 0.65);
+  border: 1.5px solid #e8c547 !important;
+  box-shadow:
+    0 0 0 2px #e8c547,
+    0 0 0 4px rgba(138, 106, 24, 0.9),
+    0 0 28px 4px rgba(255, 200, 70, 0.75) !important;
+}
+.pack-card.kira.flipped .pack-card-front .hcard.kira::before {
+  background: linear-gradient(90deg, #8a6a12, #ffe7a3 30%, #ffd76a 50%, #ffe7a3 70%, #8a6a12);
+}
+.pack-card.flipped.r-rare.kira .pack-card-front .hcard,
+.pack-card.flipped.r-epic.kira .pack-card-front .hcard,
+.pack-card.flipped.r-legend.kira .pack-card-front .hcard {
+  box-shadow:
+    0 0 0 2px #e8c547,
+    0 0 0 4px rgba(138, 106, 24, 0.9),
+    0 0 28px 4px rgba(255, 200, 70, 0.75) !important;
 }
 .pack-kira-tag {
   font-style: normal; font-family: var(--font-num); font-weight: 700; font-size: 10px;
