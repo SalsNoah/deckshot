@@ -3,11 +3,21 @@ import { DEFAULT_PORT, type ClientMsg, type EmoteId, type ServerMsg } from '../n
 import type { MatchConnection, MatchHandlers } from './match';
 
 export function defaultServerUrl(): string {
-  const env = import.meta.env.VITE_SERVER_URL as string | undefined;
-  if (env) return env;
-  const secure = location.protocol === 'https:';
-  const host = location.hostname || 'localhost';
-  return `${secure ? 'wss' : 'ws'}://${host}:${DEFAULT_PORT}`;
+  const env = (import.meta.env.VITE_SERVER_URL as string | undefined)?.trim();
+  if (env) return env.replace(/\/$/, '');
+
+  const { protocol, hostname, port } = window.location;
+  const ws = protocol === 'https:' ? 'wss' : 'ws';
+  const host = hostname || 'localhost';
+
+  // Local Vite / preview → dedicated game server on 8787
+  const vitePorts = new Set(['5173', '5174', '5175', '4173', '4174']);
+  if (vitePorts.has(port) || host === 'localhost' || host === '127.0.0.1') {
+    return `${ws}://${host}:${DEFAULT_PORT}`;
+  }
+
+  // Production (Render etc.): same origin as the page
+  return `${ws}://${host}${port ? `:${port}` : ''}`;
 }
 
 export type LobbyStatus =

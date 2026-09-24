@@ -1,0 +1,13 @@
+# Exported from https://render.com/deploy?repo=https://github.com/SalsNoah/deckshot
+services:
+  - type: web
+    name: deckshot
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
