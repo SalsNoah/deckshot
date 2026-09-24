@@ -1,4 +1,4 @@
-import { BookOpen, Bot, ChevronRight, Dices, Layers, Pencil, Volume2, VolumeX, Wifi, LayoutGrid } from 'lucide-react';
+import { BookOpen, Bot, ChevronRight, Dices, Layers, Pencil, Sparkles, Volume2, VolumeX, Wifi, LayoutGrid } from 'lucide-react';
 import { useState, type CSSProperties } from 'react';
 import { canFreeGacha } from '../gacha';
 import { isDeckReady, rankOf, type Profile } from '../profile';
@@ -6,7 +6,7 @@ import { unlockAudio } from '../sfx';
 import { cssUrl } from '../ui/assets';
 import { RankBadge } from '../ui/RankBadge';
 
-export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, onDeckEdit, onGacha }: {
+export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, onDeckEdit, onGacha, onAnimPreview }: {
   profile: Profile;
   onChange: (p: Partial<Profile>) => void;
   onCpu: () => void;
@@ -15,6 +15,7 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
   onCards: () => void;
   onDeckEdit: () => void;
   onGacha: () => void;
+  onAnimPreview: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(profile.name);
@@ -105,6 +106,10 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
           <button className="hud-btn hud-tile" style={{ '--a': '#c7d2de' } as CSSProperties} onClick={onHowTo}>
             <BookOpen size={18} className="hud-tile-ico" />
             <b>BRIEFING</b><small>遊び方</small>
+          </button>
+          <button className="hud-btn hud-tile" style={{ '--a': '#e8a0ff' } as CSSProperties} onClick={onAnimPreview}>
+            <Sparkles size={18} className="hud-tile-ico" />
+            <b>ANIM</b><small>GIFプレビュー</small>
           </button>
         </div>
       </div>

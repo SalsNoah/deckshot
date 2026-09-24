@@ -11,6 +11,7 @@ import { DeckSelect } from './screens/DeckSelect';
 import { Gacha } from './screens/Gacha';
 import { HowTo } from './screens/HowTo';
 import { Lobby } from './screens/Lobby';
+import { AnimPreview } from './screens/AnimPreview';
 import { Title } from './screens/Title';
 
 type Screen =
@@ -21,7 +22,8 @@ type Screen =
   | { name: 'lobby' }
   | { name: 'battle'; conn: MatchConnection; key: number }
   | { name: 'howto'; next?: Screen }
-  | { name: 'cards' };
+  | { name: 'cards' }
+  | { name: 'animPreview' };
 
 export function App() {
   const [profile, setProfile] = useState<Profile>(loadProfile);
@@ -109,6 +111,7 @@ export function App() {
           onCards={() => setScreen({ name: 'cards' })}
           onDeckEdit={() => setScreen({ name: 'deckEdit', back: { name: 'title' } })}
           onGacha={() => setScreen({ name: 'gacha' })}
+          onAnimPreview={() => setScreen({ name: 'animPreview' })}
         />
       )}
       {screen.name === 'deck' && (
@@ -151,6 +154,7 @@ export function App() {
         <HowTo onBack={() => setScreen(screen.next ?? { name: 'title' })} />
       )}
       {screen.name === 'cards' && <Cards profile={profile} onBack={() => setScreen({ name: 'title' })} />}
+      {screen.name === 'animPreview' && <AnimPreview onBack={() => setScreen({ name: 'title' })} />}
     </div>
   );
 }

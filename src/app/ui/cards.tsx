@@ -17,11 +17,13 @@ const CARD_ART_IDS = [
   'eco', 'fallback', 'smoke', 'flashbang', 'stim', 'drone', 'focusfire', 'frag', 'molotov', 'precision', 'reinforce', 'c4',
 ] as const;
 
-const OPERATOR_ANIM_IDS = new Set([
+const OPERATOR_ANIM_IDS = [
   'rookie', 'scout', 'jolt', 'bulwark', 'haze', 'wire', 'kingpin', 'blitz', 'breacher', 'ghost',
   'angel', 'banshee', 'hawk', 'reaper', 'vanguard', 'titan', 'ace', 'deadeye',
   'shard', 'anchor', 'mimic', 'widow', 'leech', 'blast', 'martyr', 'phoenix', 'pack', 'lonewolf', 'scav', 'spark',
-]);
+] as const;
+
+const OPERATOR_ANIM_SET = new Set<string>(OPERATOR_ANIM_IDS);
 
 function cardArtSrc(id: string): string {
   return publicAsset(`portraits/${id}.webp`);
@@ -37,7 +39,12 @@ export function hasCardArt(cardId: string): boolean {
 }
 
 export function hasPortraitAnim(cardId: string): boolean {
-  return OPERATOR_ANIM_IDS.has(cardId);
+  return OPERATOR_ANIM_SET.has(cardId);
+}
+
+/** Ordered list of operators that have baked motion GIFs. */
+export function portraitAnimIds(): readonly string[] {
+  return OPERATOR_ANIM_IDS;
 }
 
 /** Neon card portrait. Animation-rare swaps the still for an analyzed looping GIF. */
