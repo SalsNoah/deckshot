@@ -24,7 +24,6 @@ const OPERATORS = [
 
 const OUT_W = 384;
 const FRAMES = 12;
-const DELAY_MS = 70;
 /** Max horizontal sway in source pixels (at hair tip). */
 const AMP_X = 7.5;
 /** Max vertical bob in source pixels. */
