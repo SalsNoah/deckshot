@@ -367,6 +367,54 @@ export const sfx = {
     noise(c, t, 0.3, 'bandpass', 900, 0.22, 3200);
   },
 
+  packCharge() {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    neonSweep(c, t, 90, 420, 0.9, 0.16);
+    noise(c, t, 0.9, 'bandpass', 300, 0.16, 2400);
+    [0.2, 0.42, 0.6, 0.74].forEach((d) => click(c, t + d, 0.07));
+  },
+
+  packOpen() {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    noise(c, t, 0.45, 'highpass', 900, 0.34, 7000);
+    tone(c, t, 'sine', 120, 0.5, 0.3, 40);
+    chirp(c, t + 0.04, 600, 2400, 0.35, 0.16);
+    neonSweep(c, t + 0.05, 300, 1400, 0.5, 0.12);
+  },
+
+  cardDeal() {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    noise(c, t, 0.12, 'bandpass', 2600, 0.12, 900);
+  },
+
+  cardFlip(rarity: 'common' | 'rare' | 'epic' | 'legend') {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    noise(c, t, 0.08, 'highpass', 3000, 0.12);
+    chirp(c, t, 900, 1500, 0.1, 0.12);
+    if (rarity === 'rare') chirp(c, t + 0.06, 1320, 1980, 0.18, 0.14);
+    if (rarity === 'epic') {
+      neonSweep(c, t, 300, 1200, 0.4, 0.14);
+      [784, 1047, 1319].forEach((f, i) => chirp(c, t + 0.08 + i * 0.06, f * 0.8, f, 0.2, 0.12));
+    }
+    if (rarity === 'legend') {
+      tone(c, t, 'sine', 70, 0.8, 0.3, 35);
+      noise(c, t, 0.7, 'highpass', 1200, 0.2, 8000);
+      [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => {
+        chirp(c, t + 0.1 + i * 0.07, f * 0.8, f, 0.3, 0.13);
+        tone(c, t + 0.1 + i * 0.07, 'triangle', f, 0.4, 0.07);
+      });
+      neonSweep(c, t + 0.4, 400, 1600, 0.9, 0.12);
+    }
+  },
+
   victory() {
     const c = ac();
     if (!c) return;

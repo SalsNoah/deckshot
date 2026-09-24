@@ -1,4 +1,4 @@
-import { BookOpen, Bot, Dices, Layers, Pencil, Volume2, VolumeX, Wifi, LayoutGrid } from 'lucide-react';
+import { BookOpen, Bot, ChevronRight, Dices, Layers, Pencil, Volume2, VolumeX, Wifi, LayoutGrid } from 'lucide-react';
 import { useState, type CSSProperties } from 'react';
 import { canFreeGacha } from '../gacha';
 import { isDeckReady, rankOf, type Profile } from '../profile';
@@ -78,22 +78,34 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
       </div>
 
       <div className="menu">
-        <button className="btn primary big" onClick={onCpu} disabled={!ready}>
-          <Bot size={20} /> CPU対戦{!ready ? '（デッキ未完成）' : ''}
+        <button className="hud-btn hud-main hud-primary" style={{ '--a': '#ff4655' } as CSSProperties} onClick={onCpu} disabled={!ready}>
+          <span className="hud-ico"><Bot size={22} /></span>
+          <span className="hud-txt"><b>CPU BATTLE</b><small>CPU対戦{!ready ? '（デッキ未完成）' : ''}</small></span>
+          <ChevronRight className="hud-go" size={22} />
         </button>
-        <button className="btn big" onClick={onOnline} disabled={!ready}>
-          <Wifi size={20} /> オンライン対戦{!ready ? '（デッキ未完成）' : ''}
+        <button className="hud-btn hud-main" style={{ '--a': '#2ee6d6' } as CSSProperties} onClick={onOnline} disabled={!ready}>
+          <span className="hud-ico"><Wifi size={22} /></span>
+          <span className="hud-txt"><b>ONLINE BATTLE</b><small>オンライン対戦{!ready ? '（デッキ未完成）' : ''}</small></span>
+          <ChevronRight className="hud-go" size={22} />
         </button>
-        <div className="menu-row">
-          <button className="btn" onClick={onDeckEdit}><LayoutGrid size={18} /> デッキ編成</button>
-          <button className="btn" onClick={onGacha}>
-            <Dices size={18} /> ガチャ
+        <div className="hud-grid">
+          <button className="hud-btn hud-tile" style={{ '--a': '#2ee6d6' } as CSSProperties} onClick={onDeckEdit}>
+            <LayoutGrid size={18} className="hud-tile-ico" />
+            <b>DECK</b><small>デッキ編成</small>
+          </button>
+          <button className="hud-btn hud-tile" style={{ '--a': '#ffb547' } as CSSProperties} onClick={onGacha}>
+            <Dices size={18} className="hud-tile-ico" />
+            <b>SUPPLY</b><small>ガチャ</small>
             {freeGacha && <span className="menu-badge">無料</span>}
           </button>
-        </div>
-        <div className="menu-row">
-          <button className="btn" onClick={onCards}><Layers size={18} /> カード一覧</button>
-          <button className="btn" onClick={onHowTo}><BookOpen size={18} /> 遊び方</button>
+          <button className="hud-btn hud-tile" style={{ '--a': '#8fb8ff' } as CSSProperties} onClick={onCards}>
+            <Layers size={18} className="hud-tile-ico" />
+            <b>ARSENAL</b><small>カード一覧</small>
+          </button>
+          <button className="hud-btn hud-tile" style={{ '--a': '#c7d2de' } as CSSProperties} onClick={onHowTo}>
+            <BookOpen size={18} className="hud-tile-ico" />
+            <b>BRIEFING</b><small>遊び方</small>
+          </button>
         </div>
       </div>
 
