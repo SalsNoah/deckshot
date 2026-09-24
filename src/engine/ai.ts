@@ -1,5 +1,5 @@
 import { card, deckById, STREAK_ORDER, STREAKS } from './cards';
-import { legalTargets, tryAdd } from './plan';
+import { checkPlan, legalTargets, RESUPPLY_COST, tryAdd } from './plan';
 import { resolveTurn } from './resolve';
 import { rngNext } from './rng';
 import { abilitiesOf, allUnits, effAtk, other, stateFromView, viewFor, zoneValue } from './state';
@@ -85,6 +85,8 @@ export function evaluate(g: GameState, me: PlayerId): number {
 
   const spValue = (sp: number) => sp * (sp >= 6 ? 6 : 3);
   v += spValue(P[me].sp) - spValue(P[opp].sp) * 0.8;
+  if (P[me].nukeTurn === g.turn) v += 50;
+  if (P[opp].nukeTurn === g.turn) v -= 50;
   v += 0.7 * P[me].credits + 0.7 * P[me].bonusNextTurn;
   v += 1.5 * P[me].hand.length;
   return v;
@@ -142,7 +144,7 @@ function randomPlan(view: GameView, rnd: Rnd, profile: AiProfile): Plan {
     }
   }
   for (const id of STREAK_ORDER) {
-    if (id === 'nuke' || rnd() > 0.35) continue;
+    if (id === 'nuke' || id === 'uav' || rnd() > 0.35) continue;
     const zone = STREAKS[id].target === 'zone' ? (Math.floor(rnd() * 3) as ZoneId) : undefined;
     add({ t: 'streak', id, zone });
   }
@@ -199,6 +201,21 @@ function predictOpponent(view: GameView, hyp: GameState, rnd: Rnd, samples: numb
   return out;
 }
 
+/** With at least this many credits the CPU sets aside RESUPPLY_COST to draw an extra card. */
+const RESUPPLY_RESERVE_AT = 8;
+
+function withResupply(view: GameView, plan: Plan): Plan {
+  if (checkPlan(view, plan).credits < RESUPPLY_COST) return plan;
+  const action: Action = { t: 'resupply' };
+  return tryAdd(view, plan, action) ? plan : { actions: [...plan.actions, action] };
+}
+
+/** Whether the CPU should spend SP on UAV this planning phase. Only 'hard' reads the revealed hand. */
+export function wantsUav(view: GameView, difficulty: Difficulty): boolean {
+  if (difficulty !== 'hard' || view.self.uavTurn === view.turn) return false;
+  return view.self.sp >= STREAKS.uav.cost && view.self.sp < STREAKS.airstrike.cost;
+}
+
 export function planAI(view: GameView, difficulty: Difficulty = 'normal', seed = Date.now()): Plan {
   if (view.winner !== null) return { actions: [] };
   const profile = PROFILES[difficulty];
@@ -211,8 +228,10 @@ export function planAI(view: GameView, difficulty: Difficulty = 'normal', seed =
     return evaluate(resolveTurn(state, plans, { snapshots: false }).state, me);
   };
 
+  const reserve = view.self.credits >= RESUPPLY_RESERVE_AT && view.self.deckCount > 0 ? RESUPPLY_COST : 0;
+  const planView: GameView = reserve ? { ...view, self: { ...view.self, credits: view.self.credits - reserve } } : view;
   const candidates: Plan[] = [empty];
-  for (let i = 0; i < profile.candidates; i++) candidates.push(randomPlan(view, rnd, profile));
+  for (let i = 0; i < profile.candidates; i++) candidates.push(randomPlan(planView, rnd, profile));
 
   const scored = candidates.map((plan) => ({
     plan,
@@ -230,9 +249,9 @@ export function planAI(view: GameView, difficulty: Difficulty = 'normal', seed =
       c.score = c.score * 0.25 + (avg * 0.7 + worst * 0.3) * 0.75;
     }
     top.sort((a, b) => b.score - a.score);
-    return top[0].plan;
+    return withResupply(view, top[0].plan);
   }
-  return scored[0].plan;
+  return withResupply(view, scored[0].plan);
 }
 
 /** Quick summary used by the CPU to pick an emote. */

@@ -1,5 +1,5 @@
 import {
-  boardAdvantage, createGame, planAI, resolveTurn, surrender, viewFor,
+  activateUav, boardAdvantage, createGame, planAI, resolveTurn, surrender, viewFor, wantsUav,
   type Difficulty, type GameEvent, type GameState, type GameView, type Plan,
 } from '../engine';
 import type { EmoteId } from '../net/protocol';
@@ -7,6 +7,8 @@ import type { EmoteId } from '../net/protocol';
 export interface MatchHandlers {
   onOpponentReady: () => void;
   onResolved: (events: GameEvent[], view: GameView) => void;
+  /** Mid-planning state change (a UAV was activated by either side). */
+  onView: (view: GameView) => void;
   onEmote: (mine: boolean, id: EmoteId) => void;
   onOpponentLeft: () => void;
   onRematch: (view: GameView) => void;
@@ -19,6 +21,7 @@ export interface MatchConnection {
   initialView: GameView;
   setHandlers(h: MatchHandlers): void;
   submit(plan: Plan): void;
+  uav(): void;
   emote(id: EmoteId): void;
   surrender(): void;
   rematch(): void;
@@ -60,6 +63,12 @@ export class LocalCpuMatch implements MatchConnection {
     });
   }
 
+  /** The CPU decides on UAV as the planning phase opens, so the player sees it while planning. */
+  private cpuTurnStart() {
+    if (this.state.winner !== null || !wantsUav(viewFor(this.state, 1), this.difficulty)) return;
+    this.state = activateUav(this.state, 1) ?? this.state;
+  }
+
   setHandlers(h: MatchHandlers) {
     this.handlers = h;
   }
@@ -76,10 +85,18 @@ export class LocalCpuMatch implements MatchConnection {
       this.later(350, () => {
         const res = resolveTurn(this.state, [plan, cpuPlan]);
         this.state = res.state;
+        this.cpuTurnStart();
         this.handlers?.onResolved(res.events, viewFor(this.state, 0));
         this.maybeEmote(res.events);
       });
     });
+  }
+
+  uav() {
+    const next = activateUav(this.state, 0);
+    if (!next) return;
+    this.state = next;
+    this.handlers?.onView(viewFor(this.state, 0));
   }
 
   private maybeEmote(events: GameEvent[]) {

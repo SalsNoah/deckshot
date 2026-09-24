@@ -139,6 +139,9 @@ export class OnlineMatch implements MatchConnection {
         this.turn = msg.view.turn;
         h.onResolved(msg.events as GameEvent[], msg.view);
         break;
+      case 'view':
+        h.onView(msg.view);
+        break;
       case 'emote':
         h.onEmote(msg.mine, msg.id);
         break;
@@ -156,6 +159,10 @@ export class OnlineMatch implements MatchConnection {
 
   submit(plan: Plan) {
     this.client.send({ t: 'plan', turn: this.turn, plan });
+  }
+
+  uav() {
+    this.client.send({ t: 'uav', turn: this.turn });
   }
 
   emote(id: EmoteId) {

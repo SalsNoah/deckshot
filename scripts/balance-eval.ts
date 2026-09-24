@@ -33,6 +33,9 @@ const scoreGapsT3: number[] = [];
 const boardGapsT3: number[] = [];
 let contestedT3 = 0;
 let emptyLoserT3 = 0;
+let comebacks3 = 0;
+let decided = 0;
+const leadAfter: Record<number, { n: number; win: number }> = {};
 
 for (let seed = 1; seed <= N; seed++) {
   const d0 = decks[seed % 3];
@@ -47,13 +50,16 @@ for (let seed = 1; seed <= N; seed++) {
 
   let scoreLead: number | null = null;
   let boardLead: number | null = null;
+  const diffs: number[] = [];
 
   while (g.winner === null) {
     const plans = [
       planAI(viewFor(g, 0), diff, seed),
       planAI(viewFor(g, 1), diff, seed + 99),
     ] as const;
+    const turn = g.turn;
     g = resolveTurn(g, [...plans], { snapshots: false }).state;
+    diffs[turn] = g.players[0].score - g.players[1].score;
     if (g.turn === 3) {
       scoreLead = g.players[0].score - g.players[1].score;
       const held = heldZones(g);
@@ -68,6 +74,17 @@ for (let seed = 1; seed <= N; seed++) {
   reasons[g.winReason ?? '?'] = (reasons[g.winReason ?? '?'] ?? 0) + 1;
   endTurns.push(g.turn);
   const w = g.winner!;
+  if (w !== 'draw') {
+    decided++;
+    const worst = Math.max(0, ...Object.values(diffs).map((d) => (w === 0 ? -d : d)));
+    if (worst >= 3) comebacks3++;
+    diffs.forEach((d, t) => {
+      if (d === 0 || t >= g.turn) return;
+      leadAfter[t] ??= { n: 0, win: 0 };
+      leadAfter[t].n++;
+      if ((d > 0 ? 0 : 1) === w) leadAfter[t].win++;
+    });
+  }
 
   if (boardLead !== null && Math.abs(boardLead) >= 2) {
     bump(board2, boardLead > 0 ? 0 : 1, w);
@@ -98,6 +115,10 @@ console.log(
         boardLead1: { ...board1, convert: rate(board1) },
         scoreLead2plus: { ...score2, convert: rate(score2) },
       },
+      comebackFrom3DownPct: Math.round((100 * comebacks3) / Math.max(1, decided)),
+      leaderAfterTurnWinPct: Object.fromEntries(
+        Object.entries(leadAfter).map(([t, a]) => [t, `${Math.round((100 * a.win) / a.n)}% (n=${a.n})`]),
+      ),
       avgEndTurn: +avg(endTurns).toFixed(2),
       reasons,
     },

@@ -1,9 +1,9 @@
 import { card, STREAKS } from './cards';
-import { checkPlan, MOVE_COST } from './plan';
+import { checkPlan, MOVE_COST, RESUPPLY_COST } from './plan';
 import { randInt } from './rng';
 import {
-  abilitiesOf, abilityN, addToHand, allUnits, beginTurn, drawCard, effAim, effAtk, findUnit, hasAbility,
-  isStealthed, operatorCost, other, snapshot, viewFor, zoneCapacity, zoneValue,
+  abilitiesOf, abilityN, addToHand, allUnits, beginTurn, comebackBonus, drawCard, effAim, effAtk, findUnit,
+  hasAbility, isStealthed, operatorCost, other, snapshot, viewFor, zoneCapacity, zoneValue,
 } from './state';
 import type {
   Ability, DamageSource, Effect, GameEvent, GameEventBody, GameState, Plan, PlayerId, PublicPlay, StreakId, Unit, ZoneId,
@@ -33,11 +33,15 @@ const C4_DAMAGE = 6;
 const C4_POINTS = 2;
 const MAX_CHAIN = 2;
 export const LONG_SHOT_PENALTY = 1;
+/** SP a player gains per turn when the enemy kills their units. */
+export const DEATH_SP_PER_TURN = 1;
+/** A pending nuke is stopped if its target holds at least this many zones when it lands. */
+export const NUKE_BLOCK_ZONES = 2;
 
 class Resolver {
   events: GameEvent[] = [];
   killsThisTurn: [number, number] = [0, 0];
-  nukes: PlayerId[] = [];
+  deathSp: [number, number] = [0, 0];
   tier = 0;
 
   constructor(public g: GameState, private withSnapshots: boolean) {}
@@ -91,6 +95,10 @@ class Resolver {
     this.removeUnit(u);
     const victimOwner = u.owner;
     this.g.players[victimOwner].graveyard.push(u.cardId);
+    if (killer && killer.p !== victimOwner && this.deathSp[victimOwner] < DEATH_SP_PER_TURN) {
+      this.g.players[victimOwner].sp += 1;
+      this.deathSp[victimOwner] += 1;
+    }
     if (killer && killer.p !== victimOwner) {
       const kp = this.g.players[killer.p];
       kp.kills += 1;
@@ -252,22 +260,37 @@ class Resolver {
     const g = this.g;
     const p = q.p;
     switch (q.streak) {
-      case 'uav': {
-        const mine = allUnits(g).filter((u) => u.owner === p);
-        mine.forEach((u) => (u.tmpAim += 2));
-        g.players[p].uavTurn = g.turn + 1;
-        this.emit({ e: 'streak', p, id: 'uav' });
-        break;
-      }
       case 'airstrike':
         this.emit({ e: 'streak', p, id: 'airstrike', zone: q.zone });
         if (q.zone !== undefined) this.areaDamage(this.enemiesIn(q.zone, p), 3, 'streak', { p });
         break;
       case 'nuke':
-        this.nukes.push(p);
-        this.emit({ e: 'nuke', p });
+        g.players[p].nukeTurn = g.turn + 1;
+        this.emit({ e: 'nukeArmed', p });
         break;
     }
+  }
+
+  /** Land nukes armed last turn. Returns true if one ended the game. */
+  detonateNukes(): boolean {
+    const g = this.g;
+    const fired: PlayerId[] = [];
+    for (const p of [0, 1] as PlayerId[]) {
+      const pl = g.players[p];
+      if (pl.nukeTurn !== g.turn) continue;
+      pl.nukeTurn = -1;
+      const held = g.zones.filter((z) => z.controller === other(p)).length;
+      if (held >= NUKE_BLOCK_ZONES) this.emit({ e: 'nukeFizzle', p });
+      else fired.push(p);
+    }
+    if (fired.length === 0) return false;
+    g.winner = fired.length === 2 ? 'draw' : fired[0];
+    g.winReason = 'nuke';
+    for (const p of fired) this.emit({ e: 'nuke', p });
+    if (g.winner !== 'draw') {
+      for (const u of allUnits(g).filter((u) => u.owner !== g.winner)) this.kill(u, null, false, 'streak');
+    }
+    return true;
   }
 
   chooseTarget(u: Unit, exclude?: Set<string>): Unit | null {
@@ -471,13 +494,15 @@ class Resolver {
   scoring() {
     const g = this.g;
     const held: [number, number] = [0, 0];
+    const bonus = ([0, 1] as PlayerId[]).map((p) =>
+      comebackBonus(g.players[p].score, g.players[other(p)].score, g.config.targetScore));
     for (const z of g.zones) {
       const a = z.units[0].length;
       const b = z.units[1].length;
       z.controller = a > 0 && b === 0 ? 0 : b > 0 && a === 0 ? 1 : null;
       if (z.controller === null) continue;
       const pl = g.players[z.controller];
-      const pts = zoneValue(z.modId, g.turn);
+      const pts = zoneValue(z.modId, g.turn) + bonus[z.controller];
       pl.score += pts;
       held[z.controller] += 1;
       if (z.modId === 'supply') pl.bonusNextTurn += 2;
@@ -517,6 +542,7 @@ export function resolveTurn(input: GameState, plans: [Plan, Plan], opts: { snaps
   const deploys: { p: PlayerId; cardId: string; zone: ZoneId; uid: string }[][] = [[], []];
   const gears: { p: PlayerId; cardId: string; uid: string }[][] = [[], []];
   const moves: { p: PlayerId; uid: string; zone: ZoneId }[][] = [[], []];
+  const resupply: PlayerId[] = [];
   const queue: QueuedEffect[] = [];
   let seq = 0;
 
@@ -566,10 +592,20 @@ export function resolveTurn(input: GameState, plans: [Plan, Plan], opts: { snaps
           queue.push({ p, speed: STREAKS[a.id].speed, order: seq++, streak: a.id, zone: a.zone });
           plays[p].push({ t: 'streak', id: a.id, zone: a.zone });
           break;
+        case 'resupply':
+          pl.credits -= RESUPPLY_COST;
+          resupply.push(p);
+          plays[p].push({ t: 'resupply' });
+          break;
       }
     }
   }
   r.emit({ e: 'reveal', plays });
+
+  for (const p of resupply) {
+    if (drawCard(g, p)) r.emit({ e: 'draw', p, count: 1 });
+    else g.players[p].credits += RESUPPLY_COST;
+  }
 
   // Rotations
   for (const p of order) {
@@ -652,28 +688,31 @@ export function resolveTurn(input: GameState, plans: [Plan, Plan], opts: { snaps
     if (!fizzle && def.effect) r.applyEffect(def.effect, q.p, q.zone, q.uid, 'tactic');
   }
 
-  if (r.nukes.length) {
-    g.winner = r.nukes.length === 2 ? 'draw' : r.nukes[0];
-    g.winReason = 'nuke';
-    for (const u of allUnits(g).filter((u) => g.winner !== 'draw' && u.owner !== g.winner)) {
-      r.kill(u, null, false, 'streak');
-    }
-    r.emit({ e: 'gameOver', winner: g.winner, reason: 'nuke' });
-    return { state: g, events: r.events };
-  }
-
   r.combat();
   r.multikills();
   r.endOfTurn();
   r.scoring();
 
-  if (r.checkWinner()) {
+  if (r.detonateNukes() || r.checkWinner()) {
     r.emit({ e: 'gameOver', winner: g.winner, reason: g.winReason! });
   } else {
     beginTurn(g);
     r.emit({ e: 'turnStart', turn: g.turn });
   }
   return { state: g, events: r.events };
+}
+
+/**
+ * Activate UAV during the planning phase: the opponent's hand stays visible until this turn resolves.
+ * Returns null when it cannot be used (not enough SP, already active, game over).
+ */
+export function activateUav(input: GameState, p: PlayerId): GameState | null {
+  const pl = input.players[p];
+  if (input.winner !== null || pl.uavTurn === input.turn || pl.sp < STREAKS.uav.cost) return null;
+  const g = structuredClone(input);
+  g.players[p].sp -= STREAKS.uav.cost;
+  g.players[p].uavTurn = g.turn;
+  return g;
 }
 
 export function surrender(input: GameState, loser: PlayerId, reason: 'surrender' | 'disconnect' = 'surrender'): TurnResult {

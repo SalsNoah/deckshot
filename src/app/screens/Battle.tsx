@@ -1,7 +1,8 @@
 import { Bomb, CircleHelp, Coins, Flag, Flame, MessageCircle, Radiation, Skull, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import {
-  card, checkPlan, deckById, legalTargets, STREAK_ORDER, STREAKS, tryAdd, unitSnap, ZONE_LABELS, ZONE_MODS, ZONES,
+  card, checkPlan, comebackBonus, deckById, legalTargets, NUKE_BLOCK_ZONES, RESUPPLY_COST, STREAK_ORDER, STREAKS,
+  tryAdd, unitSnap, ZONE_LABELS, ZONE_MODS, ZONES,
   type Action, type BoardSnap, type GameEvent, type GameView, type Plan, type PlayerId, type PublicPlay,
   type StreakId, type UnitRef, type UnitSnap, type Winner, type WinReason, type ZoneId,
 } from '../../engine';
@@ -130,6 +131,8 @@ function describeAction(view: GameView, a: Action): { icon: string; label: strin
       return { icon: '', label: `${unitName({ uid: a.uid })}⇢${ZONE_LABELS[a.zone]}` };
     case 'streak':
       return { icon: '', label: `${STREAKS[a.id].en}${a.zone !== undefined ? `→${ZONE_LABELS[a.zone]}` : ''}` };
+    case 'resupply':
+      return { icon: '', label: `補給（${RESUPPLY_COST}¢）` };
   }
 }
 
@@ -171,9 +174,12 @@ export function Battle({ conn, onExit, onFinish }: {
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
   const statsRef = useRef({ nuked: false });
+  const pendingViewRef = useRef<GameView | null>(null);
 
   const planCheck = useMemo(() => checkPlan(view, plan), [view, plan]);
   const board = animSnap ?? snapFromView(view);
+  const uavOn = view.self.uavTurn === view.turn;
+  const nukeLanding = view.self.nukeTurn === view.turn ? me : view.opp.nukeTurn === view.turn ? opp : null;
 
   // ---------- helpers ----------
   const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms * speedRef.current));
@@ -264,10 +270,7 @@ export function Battle({ conn, onExit, onFinish }: {
         }
         case 'streak': {
           setAnimSnap(ev.snap);
-          if (ev.id === 'uav') {
-            shout('UAV ONLINE', sideColor(ev.p), 'lg', '敵の位置を捕捉', 1200);
-            sfx.turn();
-          } else if (ev.id === 'airstrike') {
+          if (ev.id === 'airstrike') {
             shout('AIRSTRIKE', sideColor(ev.p), 'lg', `空爆 → ${ZONE_LABELS[ev.zone ?? 0]}`, 1200);
             sfx.siren();
             await wait(700);
@@ -278,10 +281,27 @@ export function Battle({ conn, onExit, onFinish }: {
           await wait(800);
           break;
         }
+        case 'nukeArmed':
+          setAnimSnap(ev.snap);
+          sfx.siren();
+          vibrate([120, 60, 120]);
+          shout(
+            'NUKE INCOMING', sideColor(ev.p), 'xl',
+            ev.p === me ? `次のターン終了時に着弾。敵の確保を${NUKE_BLOCK_ZONES - 1}ゾーン以下に抑えろ` : `次のターン終了時に着弾。${NUKE_BLOCK_ZONES}ゾーン確保で阻止！`,
+            2200,
+          );
+          await wait(1800);
+          break;
+        case 'nukeFizzle':
+          setAnimSnap(ev.snap);
+          sfx.defuse();
+          shout('NUKE STOPPED', sideColor(ev.p === me ? opp : me), 'xl', ev.p === me ? '戦術核を阻止された…' : '戦術核を阻止した！', 1800);
+          await wait(1500);
+          break;
         case 'nuke':
           setAnimSnap(ev.snap);
           sfx.siren();
-          shout('TACTICAL NUKE', sideColor(ev.p), 'xl', ev.p === me ? '戦術核、投下' : '戦術核が来る…！', 2600);
+          shout('TACTICAL NUKE', sideColor(ev.p), 'xl', ev.p === me ? '戦術核、着弾' : '阻止できなかった…', 2600);
           await wait(1800);
           addFx({ kind: 'screen', effect: 'nuke' }, 2200);
           sfx.explosion(true);
@@ -457,7 +477,9 @@ export function Battle({ conn, onExit, onFinish }: {
     if (!aliveRef.current) return;
     setRevealPlays(null);
     setAnimSnap(null);
-    setView(finalView);
+    const pending = pendingViewRef.current;
+    pendingViewRef.current = null;
+    setView(pending && pending.turn === finalView.turn ? pending : finalView);
     setPlan({ actions: [] });
     setOppReady(false);
     speedRef.current = 1;
@@ -475,6 +497,13 @@ export function Battle({ conn, onExit, onFinish }: {
       onOpponentReady: () => setOppReady(true),
       onResolved: (events, v) => {
         queueRef.current = queueRef.current.then(() => play(events, v));
+      },
+      onView: (v) => {
+        if (phaseRef.current === 'anim') {
+          pendingViewRef.current = v;
+          return;
+        }
+        setView(v);
       },
       onEmote: (mine, id) => {
         const key = Date.now() + Math.random();
@@ -498,6 +527,11 @@ export function Battle({ conn, onExit, onFinish }: {
       aliveRef.current = false;
     };
   }, [conn, play]);
+
+  const spottedByUav = phase === 'plan' && view.opp.uavActive;
+  useEffect(() => {
+    if (spottedByUav) showToast('敵のUAV：こちらの手札が見られている');
+  }, [spottedByUav, showToast]);
 
   // Plan timer (online only)
   useEffect(() => {
@@ -604,6 +638,20 @@ export function Battle({ conn, onExit, onFinish }: {
 
   const onStreakClick = (id: StreakId) => {
     if (phase !== 'plan') return;
+    if (id === 'uav') {
+      if (uavOn) {
+        showToast('UAV稼働中：相手の手札を表示している');
+        return;
+      }
+      if (planCheck.sp < STREAKS.uav.cost) {
+        sfx.deny();
+        showToast(`SPが足りない（必要 ${STREAKS.uav.cost}）`);
+        return;
+      }
+      sfx.turn();
+      conn.uav();
+      return;
+    }
     const idx = plan.actions.findIndex((a) => a.t === 'streak' && a.id === id);
     if (idx >= 0) {
       removeAction(idx);
@@ -630,6 +678,13 @@ export function Battle({ conn, onExit, onFinish }: {
     setPhase('waiting');
     sfx.ready();
     conn.submit(p);
+  };
+
+  const toggleResupply = () => {
+    if (phase !== 'plan') return;
+    const idx = plan.actions.findIndex((a) => a.t === 'resupply');
+    if (idx >= 0) removeAction(idx);
+    else addAction({ t: 'resupply' });
   };
 
   const moveUnit = (uid: string, zone: ZoneId) => {
@@ -672,6 +727,8 @@ export function Battle({ conn, onExit, onFinish }: {
   const myScore = players[me].score;
   const oppScore = players[opp].score;
   const target = view.config.targetScore;
+  const matchPoint = comebackBonus(myScore, oppScore, target) > 0 ? me
+    : comebackBonus(oppScore, myScore, target) > 0 ? opp : null;
   const credits = animSnap ? players[me].credits : planCheck.credits;
   const sp = animSnap ? players[me].sp : planCheck.sp;
   const usedHids = new Set(plan.actions.filter((a) => 'hid' in a).map((a) => (a as { hid: string }).hid));
@@ -738,6 +795,21 @@ export function Battle({ conn, onExit, onFinish }: {
         <div className="uav-hand">
           <span>UAV：相手の手札</span>
           {view.opp.hand.map((h) => <span key={h.hid} className="uav-card"><CardIcon cardId={h.cardId} size={12} />{card(h.cardId).en}</span>)}
+        </div>
+      )}
+      {spottedByUav && <div className="uav-hand spotted"><span>敵のUAV：こちらの手札が見られている</span></div>}
+      {nukeLanding !== null && (phase === 'plan' || phase === 'waiting') && (
+        <div className={`nuke-banner ${nukeLanding === me ? 'mine' : 'theirs'}`}>
+          <Radiation size={14} />
+          {nukeLanding === me
+            ? `戦術核：このターン終了時に着弾。敵の確保を${NUKE_BLOCK_ZONES - 1}ゾーン以下に抑えろ`
+            : `敵の戦術核：このターン終了時に着弾。${NUKE_BLOCK_ZONES}ゾーン確保で阻止！`}
+        </div>
+      )}
+      {matchPoint !== null && (phase === 'plan' || phase === 'waiting') && (
+        <div className={`matchpoint-banner ${matchPoint === me ? 'mine' : 'theirs'}`}>
+          MATCH POINT
+          <span>{matchPoint === me ? '逆転のチャンス：確保したゾーン1つにつき+1pt' : 'あと一押し：ただし相手は確保ゾーン1つにつき+1pt'}</span>
         </div>
       )}
 
@@ -820,8 +892,8 @@ export function Battle({ conn, onExit, onFinish }: {
           <div className="reveal-list">
             {revealPlays.map((p, i) => (
               <span key={i} className="reveal-item" style={{ animationDelay: `${i * 90}ms` }}>
-                {p.t === 'streak' ? <StreakIcon id={p.id} size={12} /> : p.t === 'move' ? '⇢' : <CardIcon cardId={p.cardId} size={12} />}
-                {p.t === 'streak' ? STREAKS[p.id].en : p.t === 'move' ? `ローテ→${ZONE_LABELS[p.zone]}` : card(p.cardId).en}
+                {p.t === 'streak' ? <StreakIcon id={p.id} size={12} /> : p.t === 'move' ? '⇢' : p.t === 'resupply' ? <Coins size={12} /> : <CardIcon cardId={p.cardId} size={12} />}
+                {p.t === 'streak' ? STREAKS[p.id].en : p.t === 'move' ? `ローテ→${ZONE_LABELS[p.zone]}` : p.t === 'resupply' ? '補給' : card(p.cardId).en}
                 {p.t === 'deploy' || p.t === 'tactic' ? (p.zone !== undefined ? `→${ZONE_LABELS[p.zone]}` : '') : ''}
               </span>
             ))}
@@ -840,7 +912,9 @@ export function Battle({ conn, onExit, onFinish }: {
           <span className="sp-label">SP <b>{sp}</b></span>
           {STREAK_ORDER.map((id) => {
             const s = STREAKS[id];
-            const queued = plan.actions.some((a) => a.t === 'streak' && a.id === id);
+            const queued = plan.actions.some((a) => a.t === 'streak' && a.id === id)
+              || (id === 'uav' && uavOn)
+              || (id === 'nuke' && view.self.nukeTurn >= view.turn);
             const can = sp >= s.cost || queued;
             return (
               <button
@@ -919,6 +993,14 @@ export function Battle({ conn, onExit, onFinish }: {
 
       <div className="action-bar">
         <div className="deck-info">山札 {view.self.deckCount}</div>
+        <button
+          className={`btn small resupply-btn ${plan.actions.some((a) => a.t === 'resupply') ? 'queued' : ''}`}
+          disabled={phase !== 'plan'}
+          onClick={toggleResupply}
+          title="クレジットを払ってカードを1枚引く（使えるのは次のターンから・1ターン1回）"
+        >
+          補給<small>{RESUPPLY_COST}¢</small>
+        </button>
         <button className="btn ready-btn" disabled={phase !== 'plan'} onClick={submit}>
           {phase === 'plan' ? (plan.actions.length ? `READY（${plan.actions.length}）` : 'READY（パス）') : phase === 'waiting' ? '待機中…' : phase === 'anim' ? '交戦中' : '試合終了'}
           {phase === 'plan' && timeLeft !== null && <span className={`timer ${timeLeft <= 10 ? 'warn' : ''}`}>{timeLeft}</span>}

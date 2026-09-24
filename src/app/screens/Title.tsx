@@ -4,6 +4,7 @@ import { canFreeGacha } from '../gacha';
 import { isDeckReady, rankOf, type Profile } from '../profile';
 import { unlockAudio } from '../sfx';
 import { cssUrl } from '../ui/assets';
+import { RankBadge } from '../ui/RankBadge';
 
 export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, onDeckEdit, onGacha }: {
   profile: Profile;
@@ -52,10 +53,7 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
 
       <div className="player-card" style={{ '--c': tier.color } as CSSProperties}>
         <div className="rank-emblem">
-          <svg viewBox="0 0 40 46" width="44" height="50">
-            <path d="M20 2l17 8v13c0 11-8 18-17 21C11 41 3 34 3 23V10z" fill="none" stroke={tier.color} strokeWidth="2.5" />
-            <path d="M20 10l9 4v8c0 6-4 10-9 12-5-2-9-6-9-12v-8z" fill={tier.color} opacity="0.85" />
-          </svg>
+          <RankBadge id={tier.id} size={58} />
         </div>
         <div className="player-info">
           {editing ? (

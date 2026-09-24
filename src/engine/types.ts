@@ -156,7 +156,10 @@ export interface PlayerState {
   score: number;
   kills: number;
   headshots: number;
+  /** Turn during whose planning phase this player's UAV reveals the opponent hand (-1 = none). */
   uavTurn: number;
+  /** Turn at whose end this player's tactical nuke detonates (-1 = none). */
+  nukeTurn: number;
 }
 
 export type Winner = PlayerId | 'draw' | null;
@@ -190,7 +193,8 @@ export type Action =
   | { t: 'gear'; hid: string; target: UnitRef }
   | { t: 'tactic'; hid: string; zone?: ZoneId; target?: UnitRef }
   | { t: 'move'; uid: string; zone: ZoneId }
-  | { t: 'streak'; id: StreakId; zone?: ZoneId };
+  | { t: 'streak'; id: StreakId; zone?: ZoneId }
+  | { t: 'resupply' };
 
 export interface Plan {
   actions: Action[];
@@ -202,7 +206,8 @@ export type PublicPlay =
   | { t: 'gear'; cardId: string; uid: string }
   | { t: 'tactic'; cardId: string; zone?: ZoneId; uid?: string }
   | { t: 'move'; uid: string; zone: ZoneId }
-  | { t: 'streak'; id: StreakId; zone?: ZoneId };
+  | { t: 'streak'; id: StreakId; zone?: ZoneId }
+  | { t: 'resupply' };
 
 export interface UnitSnap {
   uid: string;
@@ -270,6 +275,8 @@ export type GameEventBody =
   | { e: 'c4Defuse'; p: PlayerId; zone: ZoneId }
   | { e: 'c4Explode'; p: PlayerId; zone: ZoneId }
   | { e: 'score'; p: PlayerId; zone: ZoneId; pts: number }
+  | { e: 'nukeArmed'; p: PlayerId }
+  | { e: 'nukeFizzle'; p: PlayerId }
   | { e: 'nuke'; p: PlayerId }
   | { e: 'turnStart'; turn: number }
   | { e: 'gameOver'; winner: Winner; reason: WinReason };
@@ -290,6 +297,9 @@ export interface OpponentView {
   headshots: number;
   hand?: HandCard[];
   graveyard: string[];
+  /** The opponent's UAV is revealing my hand this planning phase. */
+  uavActive: boolean;
+  nukeTurn: number;
 }
 
 export type SelfView = Omit<PlayerState, 'deck'> & { deckCount: number };

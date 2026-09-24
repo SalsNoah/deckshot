@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { DECKS } from '../engine';
 import { LocalCpuMatch, type MatchConnection } from './match';
 import type { OnlineMatch } from './online';
-import { isDeckReady, loadProfile, RP_TABLE, saveProfile, type Profile } from './profile';
+import { isDeckReady, loadProfile, matchRpDelta, saveProfile, type Profile } from './profile';
 import { setBgm, setSoundEnabled, unlockAudio } from './sfx';
 import { Battle, type MatchResult } from './screens/Battle';
 import { Cards } from './screens/Cards';
@@ -70,11 +70,9 @@ export function App() {
 
   const onFinish = useCallback((r: MatchResult): number | null => {
     const cur = profileRef.current;
-    const mode = screenRef.current.name === 'battle' && screenRef.current.conn.mode === 'online' ? 'online' : cur.difficulty;
-    const table = RP_TABLE[mode];
     const won = r.winner === r.me;
     const draw = r.winner === 'draw';
-    const rp = draw ? 0 : won ? table.win + (r.nuked ? 10 : 0) : table.loss;
+    const rp = matchRpDelta(cur.rp, draw ? 'draw' : won ? 'win' : 'loss');
     const ticketBonus = won && Math.random() < 0.15 ? 1 : 0;
     const next: Profile = {
       ...cur,
@@ -90,9 +88,6 @@ export function App() {
     setProfile(next);
     return next.rp - cur.rp;
   }, []);
-
-  const screenRef = useRef(screen);
-  screenRef.current = screen;
 
   const goCpu = () => {
     unlockAudio();

@@ -57,7 +57,7 @@ const operators: CardDef[] = [
   },
   {
     id: 'banshee', name: 'バンシー', en: 'BANSHEE', type: 'operator', cost: 3, rarity: 'rare', role: 'support',
-    atk: 3, hp: 4, aim: 5, abilities: [{ k: 'suppress', n: 2 }],
+    atk: 2, hp: 4, aim: 5, abilities: [{ k: 'suppress', n: 2 }],
     text: '【制圧2】このゾーンの敵のAIM-2。', flavor: '頭を上げたら終わりだよ。',
   },
   {
@@ -101,7 +101,7 @@ const operators: CardDef[] = [
     text: 'ATK0。【ガード】【防弾】動く掩体。', flavor: 'ここから先は通さない。',
   },
   {
-    id: 'mimic', name: 'ミミック', en: 'MIMIC', type: 'operator', cost: 3, rarity: 'epic', role: 'assault',
+    id: 'mimic', name: 'ミミック', en: 'MIMIC', type: 'operator', cost: 4, rarity: 'epic', role: 'assault',
     atk: 1, hp: 2, aim: 3, abilities: [{ k: 'mimic' }],
     text: '【擬態】配置時：このゾーンで最もATKが高い敵のATK/HP/AIMをコピー。', flavor: '見た目は敵、中身も敵。',
   },
@@ -175,11 +175,11 @@ const gear: CardDef[] = [
   },
   {
     id: 'heavyarmor', name: 'ヘビーアーマー', en: 'HEAVY', type: 'gear', cost: 2, rarity: 'common', slot: 'armor', weaponClass: 'armor',
-    mods: { hp: 3 }, text: 'HP+3', flavor: 'フルバイの証。',
+    mods: { hp: 4 }, text: 'HP+4', flavor: 'フルバイの証。',
   },
   {
     id: 'sniper', name: 'SR AWM', en: 'AWM', type: 'gear', cost: 3, rarity: 'rare', slot: 'weapon', weaponClass: 'sr',
-    mods: { atk: 2, aim: -1 }, abilities: [{ k: 'snipe' }], text: 'ATK+2 AIM-1【狙撃】', flavor: '一発で黙らせる。',
+    mods: { atk: 2 }, abilities: [{ k: 'snipe' }], text: 'ATK+2【狙撃】', flavor: '一発で黙らせる。',
   },
   {
     id: 'lmg', name: 'LMG HAMMER', en: 'HAMMER', type: 'gear', cost: 3, rarity: 'rare', slot: 'weapon', weaponClass: 'lmg',
@@ -210,7 +210,7 @@ const gear: CardDef[] = [
 const tactics: CardDef[] = [
   {
     id: 'eco', name: 'エコラウンド', en: 'ECO', type: 'tactic', cost: 0, rarity: 'common', target: 'none', speed: 0,
-    effect: { kind: 'creditsNextTurn', amount: 3 }, text: '次のターン+3¢。', flavor: '今は我慢の時。',
+    effect: { kind: 'creditsNextTurn', amount: 5 }, text: '次のターン+5¢。', flavor: '今は我慢の時。',
   },
   {
     id: 'fallback', name: '撤退', en: 'FALLBACK', type: 'tactic', cost: 0, rarity: 'common', target: 'allyUnit', speed: 0,
@@ -275,15 +275,15 @@ export function card(id: string): CardDef {
 export const STREAKS: Record<StreakId, StreakDef> = {
   uav: {
     id: 'uav', name: 'UAV', en: 'UAV', cost: 2, speed: 0, target: 'none',
-    text: 'このターン自軍全員AIM+2。次のターン、相手の手札が見える。',
+    text: '作戦中に即発動。このターンの間、相手の手札が見える。',
   },
   airstrike: {
     id: 'airstrike', name: '空爆', en: 'AIRSTRIKE', cost: 4, speed: 2, target: 'zone',
     text: 'そのゾーンの敵全員に3ダメージ。',
   },
   nuke: {
-    id: 'nuke', name: '戦術核', en: 'TACTICAL NUKE', cost: 10, speed: 9, target: 'none',
-    text: '即座に勝利する。',
+    id: 'nuke', name: '戦術核', en: 'TACTICAL NUKE', cost: 12, speed: 9, target: 'none',
+    text: '次のターン終了時に着弾して勝利。その時点で相手が2ゾーン以上確保していれば阻止される。',
   },
 };
 

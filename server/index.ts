@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { extname, join, normalize, resolve } from 'node:path';
 import { WebSocket, WebSocketServer } from 'ws';
 import {
-  checkPlan, createGame, DECKS, deckById, resolveTurn, surrender, validateDeck, viewFor,
+  activateUav, checkPlan, createGame, DECKS, deckById, resolveTurn, surrender, validateDeck, viewFor,
   type GameEvent, type GameState, type Plan, type PlayerId,
 } from '../src/engine';
 import { DEFAULT_PORT, EMOTES, PLAN_SECONDS, type ClientMsg, type ServerMsg } from '../src/net/protocol';
@@ -201,6 +201,15 @@ function onMessage(c: Client, msg: ClientMsg) {
       room.plans[c.seat] = sanitizePlan(room, c.seat, msg.plan);
       send(room.seats[c.seat === 0 ? 1 : 0], { t: 'oppReady' });
       if (room.plans[0] && room.plans[1]) resolveRoom(room);
+      break;
+    }
+    case 'uav': {
+      if (!room?.state || room.state.winner !== null) return;
+      if (msg.turn !== room.state.turn || room.plans[c.seat]) return;
+      const next = activateUav(room.state, c.seat);
+      if (!next) return;
+      room.state = next;
+      for (const s of [0, 1] as PlayerId[]) send(room.seats[s], { t: 'view', view: viewFor(next, s) });
       break;
     }
     case 'emote': {

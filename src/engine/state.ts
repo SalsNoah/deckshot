@@ -10,14 +10,14 @@ export const DEFAULT_CONFIG: GameConfig = {
   maxPerZone: 3,
   startHand: 6,
   maxHand: 10,
-  creditCap: 16,
+  creditCap: 14,
 };
 
 export const other = (p: PlayerId): PlayerId => (p === 0 ? 1 : 0);
 
-/** Base credit income. Grows by +2 each turn (T1=3 … T7+=15, capped by creditCap elsewhere). */
+/** Base credit income. Grows by +2 each turn (T1=3 … T5+=11, capped by creditCap elsewhere). */
 export function baseIncome(turn: number): number {
-  return Math.min(1 + turn * 2, 15);
+  return Math.min(1 + turn * 2, 11);
 }
 
 export interface PlayerSetup {
@@ -50,6 +50,7 @@ function newPlayer(id: PlayerId, setup: PlayerSetup): PlayerState {
     kills: 0,
     headshots: 0,
     uavTurn: -1,
+    nukeTurn: -1,
   };
 }
 
@@ -147,6 +148,13 @@ export function zoneCapacity(g: GameState | GameView, zone: ZoneId): number {
 export function zoneValue(modId: string, turn = 1): number {
   const base = modId === 'highground' ? 2 : 1;
   return turn >= 7 ? base * 2 : base;
+}
+
+/** Once the leader is within this many points of the target, the trailing player earns +1 per held zone. */
+export const MATCH_POINT_MARGIN = 2;
+
+export function comebackBonus(myScore: number, oppScore: number, targetScore: number): number {
+  return myScore < oppScore && oppScore >= targetScore - MATCH_POINT_MARGIN ? 1 : 0;
 }
 
 export function operatorCost(cardId: string, modId: string): number {
@@ -271,6 +279,8 @@ export function viewFor(g: GameState, me: PlayerId): GameView {
       headshots: opp.headshots,
       hand: self.uavTurn === g.turn ? structuredClone(opp.hand) : undefined,
       graveyard: [...opp.graveyard],
+      uavActive: opp.uavTurn === g.turn,
+      nukeTurn: opp.nukeTurn,
     },
     winner: g.winner,
     winReason: g.winReason,
@@ -295,7 +305,8 @@ export function stateFromView(v: GameView): GameState {
     score: v.opp.score,
     kills: v.opp.kills,
     headshots: v.opp.headshots,
-    uavTurn: -1,
+    uavTurn: v.opp.uavActive ? v.turn : -1,
+    nukeTurn: v.opp.nukeTurn,
   };
   const players = (v.me === 0 ? [self, opp] : [opp, self]) as [PlayerState, PlayerState];
   return {

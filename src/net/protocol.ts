@@ -20,6 +20,7 @@ export type ClientMsg =
   | { t: 'join'; code: string }
   | { t: 'cancel' }
   | { t: 'plan'; turn: number; plan: Plan }
+  | { t: 'uav'; turn: number }
   | { t: 'emote'; id: EmoteId }
   | { t: 'surrender' }
   | { t: 'rematch' };
@@ -30,6 +31,7 @@ export type ServerMsg =
   | { t: 'start'; view: GameView; oppName: string; planSeconds: number }
   | { t: 'oppReady' }
   | { t: 'resolved'; events: GameEvent[]; view: GameView }
+  | { t: 'view'; view: GameView }
   | { t: 'emote'; mine: boolean; id: EmoteId }
   | { t: 'oppLeft' }
   | { t: 'rematchOffer' }

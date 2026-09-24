@@ -4,6 +4,7 @@ import type { Action, GameView, Plan, UnitRef, ZoneId } from './types';
 import { ZONES } from './types';
 
 export const MOVE_COST = 1;
+export const RESUPPLY_COST = 4;
 
 export interface PlanCheck {
   valid: Action[];
@@ -26,6 +27,8 @@ export function actionCost(view: GameView, a: Action): { credits: number; sp: nu
     }
     case 'move':
       return { credits: MOVE_COST, sp: 0 };
+    case 'resupply':
+      return { credits: RESUPPLY_COST, sp: 0 };
     case 'streak':
       return { credits: 0, sp: STREAKS[a.id].cost };
   }
@@ -45,6 +48,7 @@ export function checkPlan(view: GameView, plan: Plan): PlanCheck {
   const counts = view.zones.map((z) => z.units[me].length);
   const moved = new Set<string>();
   const streaksUsed = new Set<string>();
+  let resupplied = false;
   const valid: Action[] = [];
   const errors: PlanCheck['errors'] = [];
   const c4Checks: { index: number; zone: ZoneId }[] = [];
@@ -58,7 +62,7 @@ export function checkPlan(view: GameView, plan: Plan): PlanCheck {
   plan.actions.forEach((a, index) => {
     const fail = (message: string) => errors.push({ index, message });
     const cost = actionCost(view, a);
-    if (a.t !== 'move' && a.t !== 'streak') {
+    if ('hid' in a) {
       if (used.has(a.hid)) return fail('そのカードは使用済み');
       const hc = view.self.hand.find((h) => h.hid === a.hid);
       if (!hc) return fail('手札にないカード');
@@ -112,13 +116,24 @@ export function checkPlan(view: GameView, plan: Plan): PlanCheck {
         break;
       }
       case 'streak': {
+        if (a.id === 'uav') return fail('UAVは作戦中にすぐ発動する');
         if (streaksUsed.has(a.id)) return fail('このターンは使用済み');
+        if (a.id === 'nuke') {
+          if (view.self.nukeTurn >= view.turn) return fail('戦術核は起動済み');
+          if (view.turn >= view.config.maxTurns) return fail('最終ターンは核の着弾が間に合わない');
+        }
         if (STREAKS[a.id].target === 'zone' && (a.zone === undefined || !ZONES.includes(a.zone))) return fail('ゾーンを選択');
         streaksUsed.add(a.id);
         break;
       }
+      case 'resupply': {
+        if (resupplied) return fail('補給は1ターン1回');
+        if (view.self.deckCount <= 0) return fail('山札がない');
+        resupplied = true;
+        break;
+      }
     }
-    if (a.t !== 'move' && a.t !== 'streak') used.add(a.hid);
+    if ('hid' in a) used.add(a.hid);
     credits -= cost.credits;
     sp -= cost.sp;
     valid.push(a);

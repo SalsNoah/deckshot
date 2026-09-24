@@ -104,22 +104,29 @@ export function isDeckReady(p: Profile): boolean {
   return validateDeck(p.deck, p.owned).ok;
 }
 
+export type RankId = 'rookie' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'master' | 'legend';
+
 export interface RankTier {
+  id: RankId;
   name: string;
   en: string;
   min: number;
   color: string;
+  /** RP lost on defeat. Rookie–Silver stay at 0. */
+  loss: number;
 }
 
+export const WIN_RP = 50;
+
 export const RANKS: RankTier[] = [
-  { name: 'ルーキー', en: 'ROOKIE', min: 0, color: '#8a96a8' },
-  { name: 'ブロンズ', en: 'BRONZE', min: 100, color: '#c98a55' },
-  { name: 'シルバー', en: 'SILVER', min: 250, color: '#c7d2de' },
-  { name: 'ゴールド', en: 'GOLD', min: 450, color: '#ffc94d' },
-  { name: 'プラチナ', en: 'PLATINUM', min: 700, color: '#5fe3d0' },
-  { name: 'ダイヤ', en: 'DIAMOND', min: 1000, color: '#8fb8ff' },
-  { name: 'マスター', en: 'MASTER', min: 1400, color: '#c77dff' },
-  { name: 'レジェンド', en: 'LEGEND', min: 1900, color: '#ff4655' },
+  { id: 'rookie', name: 'ルーキー', en: 'ROOKIE', min: 0, color: '#8a96a8', loss: 0 },
+  { id: 'bronze', name: 'ブロンズ', en: 'BRONZE', min: 100, color: '#c98a55', loss: 0 },
+  { id: 'silver', name: 'シルバー', en: 'SILVER', min: 250, color: '#c7d2de', loss: 0 },
+  { id: 'gold', name: 'ゴールド', en: 'GOLD', min: 450, color: '#ffc94d', loss: 50 },
+  { id: 'platinum', name: 'プラチナ', en: 'PLATINUM', min: 700, color: '#5fe3d0', loss: 65 },
+  { id: 'diamond', name: 'ダイヤ', en: 'DIAMOND', min: 1000, color: '#8fb8ff', loss: 80 },
+  { id: 'master', name: 'マスター', en: 'MASTER', min: 1400, color: '#c77dff', loss: 95 },
+  { id: 'legend', name: 'レジェンド', en: 'LEGEND', min: 1900, color: '#ff4655', loss: 110 },
 ];
 
 export function rankOf(rp: number): { tier: RankTier; next?: RankTier; progress: number } {
@@ -131,9 +138,12 @@ export function rankOf(rp: number): { tier: RankTier; next?: RankTier; progress:
   return { tier, next, progress };
 }
 
-export const RP_TABLE: Record<Difficulty | 'online', { win: number; loss: number }> = {
-  easy: { win: 12, loss: -6 },
-  normal: { win: 25, loss: -12 },
-  hard: { win: 40, loss: -15 },
-  online: { win: 30, loss: -20 },
-};
+/** Win is always +50. Loss depends on the rank before the match. Draws are 0. */
+export function matchRpDelta(rp: number, outcome: 'win' | 'loss' | 'draw'): number {
+  if (outcome === 'win') return WIN_RP;
+  if (outcome === 'loss') {
+    const loss = rankOf(rp).tier.loss;
+    return loss === 0 ? 0 : -loss;
+  }
+  return 0;
+}

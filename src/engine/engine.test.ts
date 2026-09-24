@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  card, checkPlan, createGame, DECKS, effAtk, findUnit, planAI, resolveTurn, validateDeck, viewFor,
+  activateUav, baseIncome, card, checkPlan, createGame, DECKS, effAtk, findUnit, planAI, resolveTurn, RESUPPLY_COST,
+  validateDeck, viewFor,
   type GameEvent, type GameState, type Plan, type PlayerId, type Unit, type ZoneId,
 } from './index';
 
@@ -214,15 +215,52 @@ describe('scoring and objectives', () => {
     expect(ofType(t2.events, 'c4Explode')).toHaveLength(0);
   });
 
-  it('tactical nuke wins instantly', () => {
+  it('tactical nuke lands at the end of the next turn and wins', () => {
     const g = setup();
-    g.players[1].sp = 10;
+    g.players[1].sp = 12;
     spawn(g, 0, 'titan', 0);
-    const { state, events } = resolveTurn(g, [EMPTY, { actions: [{ t: 'streak', id: 'nuke' }] }]);
-    expect(state.winner).toBe(1);
-    expect(state.winReason).toBe('nuke');
-    expect(state.zones[0].units[0]).toHaveLength(0);
-    expect(events.at(-1)!.e).toBe('gameOver');
+    const t1 = resolveTurn(g, [EMPTY, { actions: [{ t: 'streak', id: 'nuke' }] }]);
+    expect(t1.state.winner).toBeNull();
+    expect(ofType(t1.events, 'nukeArmed')).toHaveLength(1);
+    expect(t1.state.players[1].nukeTurn).toBe(t1.state.turn);
+    expect(viewFor(t1.state, 0).opp.nukeTurn).toBe(t1.state.turn);
+    const t2 = resolveTurn(t1.state, [EMPTY, EMPTY]);
+    expect(t2.state.winner).toBe(1);
+    expect(t2.state.winReason).toBe('nuke');
+    expect(t2.state.zones[0].units[0]).toHaveLength(0);
+    expect(t2.events.at(-1)!.e).toBe('gameOver');
+  });
+
+  it('tactical nuke is stopped when the target holds two zones', () => {
+    const g = setup();
+    g.players[1].sp = 12;
+    spawn(g, 0, 'titan', 0);
+    spawn(g, 0, 'titan', 1);
+    const t1 = resolveTurn(g, [EMPTY, { actions: [{ t: 'streak', id: 'nuke' }] }]);
+    const t2 = resolveTurn(t1.state, [EMPTY, EMPTY]);
+    expect(ofType(t2.events, 'nukeFizzle')).toHaveLength(1);
+    expect(t2.state.winReason).not.toBe('nuke');
+    expect(t2.state.players[1].nukeTurn).toBe(-1);
+  });
+
+  it('tactical nuke cannot be armed twice or on the final turn', () => {
+    const g = setup();
+    g.players[0].sp = 30;
+    g.players[0].nukeTurn = g.turn;
+    expect(checkPlan(viewFor(g, 0), { actions: [{ t: 'streak', id: 'nuke' }] }).valid).toHaveLength(0);
+    g.players[0].nukeTurn = -1;
+    g.turn = g.config.maxTurns;
+    expect(checkPlan(viewFor(g, 0), { actions: [{ t: 'streak', id: 'nuke' }] }).valid).toHaveLength(0);
+  });
+
+  it('losing units gives SP once per turn', () => {
+    const g = setup();
+    spawn(g, 0, 'ace', 1);
+    spawn(g, 1, 'rookie', 1);
+    spawn(g, 1, 'rookie', 1);
+    const { state } = resolveTurn(g, [EMPTY, EMPTY]);
+    expect(state.zones[1].units[1]).toHaveLength(0);
+    expect(state.players[1].sp).toBe(1);
   });
 
   it('reaching the target score wins', () => {
@@ -231,6 +269,17 @@ describe('scoring and objectives', () => {
     spawn(g, 0, 'bulwark', 0);
     const { state } = resolveTurn(g, [EMPTY, EMPTY]);
     expect(state.winner).toBe(0);
+  });
+
+  it('match point gives the trailing player +1 per held zone', () => {
+    const g = setup();
+    g.players[0].score = 8;
+    g.players[1].score = 3;
+    spawn(g, 0, 'bulwark', 0);
+    spawn(g, 1, 'bulwark', 2);
+    const { state } = resolveTurn(g, [EMPTY, EMPTY]);
+    expect(state.players[0].score).toBe(9);
+    expect(state.players[1].score).toBe(5);
   });
 
   it('zone points double from turn 7', () => {
@@ -282,9 +331,45 @@ describe('plans and hidden information', () => {
     expect(v.opp.hand).toBeUndefined();
     expect(v.opp.handCount).toBe(g.players[1].hand.length);
     expect('deck' in v.self).toBe(false);
-    g.players[1].sp = 2;
-    const { state } = resolveTurn(g, [EMPTY, { actions: [{ t: 'streak', id: 'uav' }] }]);
-    expect(viewFor(state, 1).opp.hand).toHaveLength(state.players[0].hand.length);
+  });
+
+  it('UAV reveals the opponent hand immediately for the current planning phase', () => {
+    const g = setup();
+    expect(activateUav(g, 1)).toBeNull();
+    g.players[1].sp = 3;
+    const s = activateUav(g, 1)!;
+    expect(s.players[1].sp).toBe(1);
+    expect(viewFor(s, 1).opp.hand).toHaveLength(s.players[0].hand.length);
+    expect(viewFor(s, 0).opp.uavActive).toBe(true);
+    expect(activateUav(s, 1)).toBeNull();
+    expect(checkPlan(viewFor(s, 1), { actions: [{ t: 'streak', id: 'uav' }] }).valid).toHaveLength(0);
+    const next = resolveTurn(s, [EMPTY, EMPTY]).state;
+    expect(viewFor(next, 1).opp.hand).toBeUndefined();
+  });
+
+  it('resupply costs credits and draws a card once per turn', () => {
+    const g = setup();
+    g.players[0].credits = 10;
+    const handBefore = g.players[0].hand.length;
+    const res = checkPlan(viewFor(g, 0), { actions: [{ t: 'resupply' }, { t: 'resupply' }] });
+    expect(res.valid).toHaveLength(1);
+    const { state, events } = resolveTurn(g, [{ actions: [{ t: 'resupply' }] }, EMPTY]);
+    expect(ofType(events, 'draw').some((d) => d.p === 0 && d.count === 1)).toBe(true);
+    // +1 from resupply, +1 from the normal draw at the start of the next turn
+    expect(state.players[0].hand.length).toBe(handBefore + 2);
+    expect(state.players[0].credits).toBe(Math.min(state.config.creditCap, 10 - RESUPPLY_COST + baseIncome(state.turn)));
+  });
+
+  it('resupply is refunded when the hand is full', () => {
+    const g = setup();
+    g.players[0].credits = 5;
+    while (g.players[0].hand.length < g.config.maxHand) giveCard(g, 0, 'rookie');
+    const { state } = resolveTurn(g, [{ actions: [{ t: 'resupply' }] }, EMPTY]);
+    expect(state.players[0].credits).toBe(Math.min(state.config.creditCap, 5 + baseIncome(state.turn)));
+  });
+
+  it('income grows by 2 per turn up to 11', () => {
+    expect([1, 2, 3, 4, 5, 6, 9].map(baseIncome)).toEqual([3, 5, 7, 9, 11, 11, 11]);
   });
 
   it('resolution is deterministic', () => {
