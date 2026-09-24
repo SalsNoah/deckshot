@@ -155,18 +155,65 @@ async function writeGif(id: string, frames: Uint8ClampedArray[]) {
   await writeFile(join(OUT_DIR, `${id}.gif`), gif.bytes());
 }
 
-async function bakeOne(id: string): Promise<boolean> {
-  const keys = await loadKeyframes(id);
-  if (!keys) {
-    console.warn(`skip ${id}: need public/portraits/anim-src/${id}/01.png…`);
+function glowPulseFrame(master: Uint8ClampedArray, phase: number): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(master);
+  const pulse = 0.5 + 0.5 * Math.sin(phase * Math.PI * 2);
+  const glintX = phase; // 0→1 sweep
+  for (let y = 0; y < OUT_W; y++) {
+    const ny = y / (OUT_W - 1);
+    for (let x = 0; x < OUT_W; x++) {
+      const nx = x / (OUT_W - 1);
+      const i = (y * OUT_W + x) * 4;
+      const r = master[i]!;
+      const g = master[i + 1]!;
+      const b = master[i + 2]!;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const sat = max < 1 ? 0 : (max - min) / max;
+      const isGreenGlow = g > 90 && g > r * 1.15 && g > b * 1.1 && sat > 0.25;
+      if (!isGreenGlow) continue;
+
+      // Soft brightness pulse on neon greens (eyes, circuits, lenses).
+      let boost = 1 + 0.18 * (pulse * 2 - 1) * sat;
+
+      // Traveling specular band across goggle region (upper-left).
+      if (nx < 0.5 && ny > 0.15 && ny < 0.55) {
+        const proj = nx * 0.85 + ny * 0.15;
+        const d = Math.min(Math.abs(proj - glintX), Math.abs(proj - glintX + 1), Math.abs(proj - glintX - 1));
+        const band = Math.exp(-(d * d) / (2 * 0.03 * 0.03));
+        const sheen = band * 0.55 * (g / 255);
+        out[i] = Math.min(255, Math.round(r + (255 - r) * sheen));
+        out[i + 1] = Math.min(255, Math.round(g + (255 - g) * sheen));
+        out[i + 2] = Math.min(255, Math.round(b + (255 - b) * sheen * 0.9));
+        continue;
+      }
+
+      out[i] = Math.min(255, Math.round(r * boost));
+      out[i + 1] = Math.min(255, Math.round(g * boost));
+      out[i + 2] = Math.min(255, Math.round(b * boost));
+    }
+  }
+  return out;
+}
+
+async function bakeScoutLocked(): Promise<boolean> {
+  const dir = join(SRC_DIR, 'scout');
+  const masterPath = join(dir, '_master.png');
+  try {
+    await access(masterPath);
+  } catch {
+    console.warn('skip scout: need _master.png');
     return false;
   }
-  const frames = interpolate(keys);
-  await writeGif(id, frames);
-  const meta = await sharp(join(OUT_DIR, `${id}.gif`), { animated: true }).metadata();
-  const pages = meta.pages ?? 1;
-  console.log(`ok  ${id}.gif  keys=${keys.length} frames=${frames.length} pages=${pages}`);
-  return pages > 1;
+  const master = await loadRgba(masterPath);
+  const FRAMES = 24;
+  const frames: Uint8ClampedArray[] = [];
+  for (let i = 0; i < FRAMES; i++) {
+    frames.push(glowPulseFrame(master, i / FRAMES));
+  }
+  await writeGif('scout', frames);
+  console.log(`ok  scout.gif  locked-master glow loop frames=${FRAMES}`);
+  return true;
 }
 
 async function main() {
@@ -174,6 +221,12 @@ async function main() {
   let n = 0;
   let missing = 0;
   for (const id of OPERATORS) {
+    if (id === 'scout') {
+      await rm(join(OUT_DIR, 'scout.gif'), { force: true });
+      if (await bakeScoutLocked()) n++;
+      else missing++;
+      continue;
+    }
     const keys = await loadKeyframes(id);
     if (!keys) {
       missing++;
@@ -181,7 +234,6 @@ async function main() {
       continue;
     }
     await rm(join(OUT_DIR, `${id}.gif`), { force: true });
-    // reload happens inside bakeOne — avoid double load by inlining
     const frames = interpolate(keys);
     await writeGif(id, frames);
     const meta = await sharp(join(OUT_DIR, `${id}.gif`), { animated: true }).metadata();
