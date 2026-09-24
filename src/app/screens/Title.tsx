@@ -51,7 +51,7 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
         <div className="logo-tag">3分で決着する、読み合いカードバトル</div>
       </div>
 
-      <div className="player-card" style={{ '--c': tier.color } as CSSProperties}>
+      <div className="hud-panel player-card" style={{ '--a': tier.color, '--c': tier.color } as CSSProperties}>
         <div className="rank-emblem">
           <RankBadge id={tier.id} size={68} />
         </div>
@@ -78,14 +78,14 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
       </div>
 
       <div className="menu">
-        <button className="hud-btn hud-main hud-primary" style={{ '--a': '#ff4655' } as CSSProperties} onClick={onCpu} disabled={!ready}>
-          <span className="hud-ico"><Bot size={22} /></span>
-          <span className="hud-txt"><b>CPU BATTLE</b><small>CPU対戦{!ready ? '（デッキ未完成）' : ''}</small></span>
-          <ChevronRight className="hud-go" size={22} />
-        </button>
         <button className="hud-btn hud-main" style={{ '--a': '#2ee6d6' } as CSSProperties} onClick={onOnline} disabled={!ready}>
           <span className="hud-ico"><Wifi size={22} /></span>
           <span className="hud-txt"><b>ONLINE BATTLE</b><small>オンライン対戦{!ready ? '（デッキ未完成）' : ''}</small></span>
+          <ChevronRight className="hud-go" size={22} />
+        </button>
+        <button className="hud-btn hud-main hud-primary" style={{ '--a': '#ff4655' } as CSSProperties} onClick={onCpu} disabled={!ready}>
+          <span className="hud-ico"><Bot size={22} /></span>
+          <span className="hud-txt"><b>CPU BATTLE</b><small>CPU対戦{!ready ? '（デッキ未完成）' : ''}</small></span>
           <ChevronRight className="hud-go" size={22} />
         </button>
         <div className="hud-grid">
