@@ -2,6 +2,12 @@ import { ALL_CARDS, card, type Rarity } from '../engine';
 
 export const GACHA_PULL_SIZE = 3;
 
+/** Number of single pulls in a multi (10連). */
+export const GACHA_MULTI_PACKS = 10;
+
+/** Ticket cost for a multi pull (1 ticket per pack). */
+export const GACHA_MULTI_TICKETS = GACHA_MULTI_PACKS;
+
 /** Operator pulls become kira (shiny) at this rate. Rolled silently. */
 export const KIRA_CHANCE = 0.1;
 
@@ -79,9 +85,10 @@ export function canRollKira(cardId: string): boolean {
   return canRollOperatorCosmetic(cardId);
 }
 
-/** Draw GACHA_PULL_SIZE cards. Cosmetics are rolled silently for operators. */
-export function pullGacha(rng: () => number = Math.random): PullResult[] {
-  return Array.from({ length: GACHA_PULL_SIZE }, () => {
+/** Draw `packs` × GACHA_PULL_SIZE cards. Cosmetics are rolled silently for operators. */
+export function pullGacha(rng: () => number = Math.random, packs = 1): PullResult[] {
+  const count = Math.max(1, Math.floor(packs)) * GACHA_PULL_SIZE;
+  return Array.from({ length: count }, () => {
     const cardId = pickCard(rng);
     const op = canRollOperatorCosmetic(cardId);
     const kira = op && rng() < KIRA_CHANCE;

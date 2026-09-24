@@ -37,6 +37,9 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
   const rarities = cards.map((id) => card(id).rarity);
   const top = rarities.reduce<Rarity>((a, r) => (RARITY_RANK[r] > RARITY_RANK[a] ? r : a), 'common');
   const allOpen = flipped.every(Boolean);
+  const multi = cards.length > 6;
+  const dealStep = multi ? 45 : 140;
+  const flipGapScale = multi ? 0.45 : 1;
 
   const later = (ms: number, fn: () => void) => {
     timers.current.push(window.setTimeout(fn, ms));
@@ -70,7 +73,7 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
     });
     later(1550, () => {
       setPhase('reveal');
-      cards.forEach((_, i) => later(i * 140, () => sfx.cardDeal()));
+      cards.forEach((_, i) => later(i * dealStep, () => sfx.cardDeal()));
     });
   };
 
@@ -116,7 +119,7 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
     cards.forEach((_, i) => {
       if (flipped[i]) return;
       later(at, () => reveal(i));
-      at += FLIP_GAP[rarities[i]] + (kira[i] ? 120 : 0);
+      at += Math.max(90, (FLIP_GAP[rarities[i]] + (kira[i] ? 120 : 0)) * flipGapScale);
     });
     later(at, () => setFlippingAll(false));
   };
@@ -128,7 +131,7 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
   }, [spotlight]);
 
   return (
-    <div className={`screen pack-screen phase-${phase}`} style={{ '--hi': RARITY_COLOR[top] } as CSSProperties}>
+    <div className={`screen pack-screen phase-${phase}${multi ? ' pack-multi' : ''}`} style={{ '--hi': RARITY_COLOR[top] } as CSSProperties}>
       <div className="pack-bg" aria-hidden>
         <div className="pack-bg-rays" />
         {particles.map((p, i) => (
@@ -141,8 +144,8 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
       </div>
 
       <div className="pack-head">
-        <span>OPERATOR SUPPLY</span>
-        <b>{phase === 'reveal' ? (allOpen ? '獲得カード' : 'タップしてめくる') : 'パックを開封'}</b>
+        <span>OPERATOR SUPPLY{multi ? ' ×10' : ''}</span>
+        <b>{phase === 'reveal' ? (allOpen ? `獲得カード（${cards.length}枚）` : 'タップしてめくる') : 'パックを開封'}</b>
       </div>
 
       <div className="pack-stage">
@@ -165,15 +168,20 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
         {phase === 'burst' && <div className="pack-flash" />}
 
         {phase === 'reveal' && (
-          <div className="pack-cards">
+          <div className={`pack-cards${multi ? ' multi' : ''}`}>
             {cards.map((id, i) => {
               const r = rarities[i];
               const isKira = kira[i];
+              const col = multi ? (i % 5) - 2 : 1 - i;
               return (
                 <div
                   key={`${id}-${i}`}
                   className={`pack-card r-${r} ${isKira ? 'kira' : ''} ${flipped[i] ? 'flipped' : ''} ${burstAt === i ? 'burst' : ''}`}
-                  style={{ '--i': i, '--dx': `${(1 - i) * 112}px`, '--r': RARITY_COLOR[r] } as CSSProperties}
+                  style={{
+                    '--i': multi ? Math.min(i, 12) : i,
+                    '--dx': `${col * (multi ? 64 : 112)}px`,
+                    '--r': RARITY_COLOR[r],
+                  } as CSSProperties}
                 >
                   <div className="pack-card-inner">
                     <button className="pack-card-back" onClick={() => flip(i)} aria-label="カードをめくる">

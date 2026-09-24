@@ -1,12 +1,15 @@
 import { Dices, Ticket } from 'lucide-react';
 import { useState, type CSSProperties } from 'react';
 import {
-  canFreeGacha, freeGachaDate, GACHA_PULL_SIZE, grantCards, grantFlow, grantKira, pullGacha, TICKET_PACKS,
+  canFreeGacha, freeGachaDate, GACHA_MULTI_PACKS, GACHA_MULTI_TICKETS, GACHA_PULL_SIZE,
+  grantCards, grantFlow, grantKira, pullGacha, TICKET_PACKS,
 } from '../gacha';
 import type { Profile } from '../profile';
 import { unlockAudio } from '../sfx';
 import { cssUrl } from '../ui/assets';
 import { PackOpening } from './PackOpening';
+
+type PullMode = 'free' | 'ticket' | 'multi';
 
 export function Gacha({ profile, onChange, onBack }: {
   profile: Profile;
@@ -14,7 +17,14 @@ export function Gacha({ profile, onChange, onBack }: {
   onBack: () => void;
 }) {
   const free = canFreeGacha(profile.lastFreeGacha);
-  const [opening, setOpening] = useState<{ cards: string[]; kira: boolean[]; flow: boolean[]; fresh: boolean[]; key: number } | null>(null);
+  const [opening, setOpening] = useState<{
+    cards: string[];
+    kira: boolean[];
+    flow: boolean[];
+    fresh: boolean[];
+    mode: PullMode;
+    key: number;
+  } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const flash = (msg: string) => {
@@ -22,7 +32,7 @@ export function Gacha({ profile, onChange, onBack }: {
     window.setTimeout(() => setToast(null), 1800);
   };
 
-  const runPull = (mode: 'free' | 'ticket') => {
+  const runPull = (mode: PullMode) => {
     if (mode === 'free' && !canFreeGacha(profile.lastFreeGacha)) {
       flash('本日の無料ガチャは終了しています');
       return;
@@ -31,8 +41,14 @@ export function Gacha({ profile, onChange, onBack }: {
       flash('チケットが足りません');
       return;
     }
+    if (mode === 'multi' && profile.gachaTickets < GACHA_MULTI_TICKETS) {
+      flash(`10連にはチケットが${GACHA_MULTI_TICKETS}枚必要です`);
+      return;
+    }
     unlockAudio();
-    const pulled = pullGacha();
+    const packs = mode === 'multi' ? GACHA_MULTI_PACKS : 1;
+    const ticketCost = mode === 'multi' ? GACHA_MULTI_TICKETS : mode === 'ticket' ? 1 : 0;
+    const pulled = pullGacha(Math.random, packs);
     const cards = pulled.map((p) => p.cardId);
     const kira = pulled.map((p) => p.kira);
     const flow = pulled.map((p) => p.flow);
@@ -41,13 +57,17 @@ export function Gacha({ profile, onChange, onBack }: {
       owned: grantCards(profile.owned, pulled),
       kiraOwned: grantKira(profile.kiraOwned ?? {}, pulled),
       flowOwned: grantFlow(profile.flowOwned ?? {}, pulled),
-      gachaTickets: mode === 'ticket' ? profile.gachaTickets - 1 : profile.gachaTickets,
+      gachaTickets: profile.gachaTickets - ticketCost,
       lastFreeGacha: mode === 'free' ? freeGachaDate() : profile.lastFreeGacha,
     });
-    setOpening({ cards, kira, flow, fresh, key: Date.now() });
+    setOpening({ cards, kira, flow, fresh, mode, key: Date.now() });
   };
 
   if (opening) {
+    const againMulti = opening.mode === 'multi';
+    const canAgain = againMulti
+      ? profile.gachaTickets >= GACHA_MULTI_TICKETS
+      : profile.gachaTickets >= 1;
     return (
       <PackOpening
         key={opening.key}
@@ -56,8 +76,10 @@ export function Gacha({ profile, onChange, onBack }: {
         flow={opening.flow}
         fresh={opening.fresh}
         onClose={() => setOpening(null)}
-        onAgain={profile.gachaTickets > 0 ? () => runPull('ticket') : undefined}
-        againLabel={`チケットでもう一度（残り ${profile.gachaTickets}）`}
+        onAgain={canAgain ? () => runPull(againMulti ? 'multi' : 'ticket') : undefined}
+        againLabel={againMulti
+          ? `もう一度10連（チケット×${GACHA_MULTI_TICKETS}・残り ${profile.gachaTickets}）`
+          : `チケットでもう一度（残り ${profile.gachaTickets}）`}
       />
     );
   }
@@ -78,7 +100,7 @@ export function Gacha({ profile, onChange, onBack }: {
         <Dices size={28} />
         <div>
           <b>オペレーター補給</b>
-          <p>1回で{GACHA_PULL_SIZE}枚。所持カードだけでデッキを組めます。</p>
+          <p>1回で{GACHA_PULL_SIZE}枚、10連で{GACHA_PULL_SIZE * GACHA_MULTI_PACKS}枚。所持カードだけでデッキを組めます。</p>
         </div>
       </div>
 
@@ -92,7 +114,14 @@ export function Gacha({ profile, onChange, onBack }: {
           無料で{GACHA_PULL_SIZE}枚引く
         </button>
         <button className="btn big" disabled={profile.gachaTickets < 1} onClick={() => runPull('ticket')}>
-          チケットで引く（残り {profile.gachaTickets}）
+          1回引く（チケット×1・残り {profile.gachaTickets}）
+        </button>
+        <button
+          className="btn big gacha-multi"
+          disabled={profile.gachaTickets < GACHA_MULTI_TICKETS}
+          onClick={() => runPull('multi')}
+        >
+          10連ガチャ（チケット×{GACHA_MULTI_TICKETS}・{GACHA_PULL_SIZE * GACHA_MULTI_PACKS}枚）
         </button>
       </div>
 

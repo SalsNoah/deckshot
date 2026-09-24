@@ -53,6 +53,11 @@ describe('kira gacha', () => {
     expect(foundNonOp).toBe(true);
   });
 
+  it('draws multi packs as packs × pull size', () => {
+    const pulled = pullGacha(() => 0.5, 10);
+    expect(pulled).toHaveLength(30);
+  });
+
   it('grants kira and flow copies only for matching pulls', () => {
     const pulled: PullResult[] = [
       { cardId: 'rookie', kira: true, flow: false },

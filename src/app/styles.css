@@ -299,6 +299,10 @@ input { font: inherit; }
 .gacha-wallet .ok { color: var(--me); font-weight: 700; }
 .gacha-wallet .off { color: var(--muted); }
 .gacha-actions { display: flex; flex-direction: column; gap: 8px; }
+.gacha-actions .gacha-multi {
+  border-color: color-mix(in srgb, #ffc94d 55%, var(--line));
+  box-shadow: 0 0 16px -6px rgba(255, 201, 77, 0.45);
+}
 
 /* ---------- pack opening ---------- */
 .pack-screen {
@@ -379,6 +383,32 @@ input { font: inherit; }
 .pack-hint { font-family: var(--font-jp); font-size: 13px; color: #c5d0dc; animation: pulse 1.4s infinite; }
 
 .pack-cards { display: flex; gap: 12px; justify-content: center; align-items: center; }
+.pack-cards.multi {
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 10px 8px;
+  width: 100%;
+  max-width: 420px;
+  max-height: min(58vh, 520px);
+  overflow-y: auto;
+  padding: 4px 6px 18px;
+  -webkit-overflow-scrolling: touch;
+}
+.pack-cards.multi .pack-card {
+  width: 72px;
+  height: 108px;
+  flex: none;
+}
+.pack-cards.multi .pack-card-tag {
+  top: calc(100% + 2px);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  height: 14px;
+}
+.pack-cards.multi .pack-card-emblem { width: 36px; height: 36px; }
+.pack-cards.multi .pack-card-emblem::before { height: 48px; }
+.pack-cards.multi .pack-card-emblem::after { width: 48px; }
+.pack-multi .pack-stage { align-items: stretch; padding: 0 4px; }
 .pack-card {
   position: relative; width: 100px; height: 150px;
   animation: dealIn 0.55s cubic-bezier(0.2, 1.2, 0.4, 1) both; animation-delay: calc(var(--i) * 0.14s);
