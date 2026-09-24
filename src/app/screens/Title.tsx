@@ -109,7 +109,7 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
           </button>
           <button className="hud-btn hud-tile" style={{ '--a': '#e8a0ff' } as CSSProperties} onClick={onAnimPreview}>
             <Sparkles size={18} className="hud-tile-ico" />
-            <b>ANIM</b><small>GIFプレビュー</small>
+            <b>ANIM</b><small>アニメプレビュー</small>
           </button>
         </div>
       </div>

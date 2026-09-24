@@ -29,9 +29,9 @@ function cardArtSrc(id: string): string {
   return publicAsset(`portraits/${id}.webp`);
 }
 
-/** Pre-baked motion-analyzed loop GIF (see `npm run portraits:anim`). */
+/** Pre-baked looping animated WebP (see `npm run portraits:anim`). */
 function cardAnimSrc(id: string): string {
-  return publicAsset(`portraits/anim/${id}.gif`);
+  return publicAsset(`portraits/anim/${id}.webp`);
 }
 
 export function hasCardArt(cardId: string): boolean {
@@ -47,7 +47,7 @@ export function portraitAnimIds(): readonly string[] {
   return OPERATOR_ANIM_IDS;
 }
 
-/** Neon card portrait. Animation-rare swaps the still for a generated looping GIF. */
+/** Neon card portrait. Animation-rare swaps the still for a generated looping animation. */
 export function Portrait({ cardId, size = 56, flow }: { cardId: string; size?: number; flow?: boolean }) {
   const def = card(cardId);
   const accent = cardColor(cardId);
