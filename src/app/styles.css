@@ -573,6 +573,29 @@ input { font: inherit; }
   background: linear-gradient(160deg, color-mix(in srgb, var(--role, #2ee6d6) 35%, #0b0f15), #0b0f15);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--role, #2ee6d6) 45%, transparent);
 }
+/* Soft Ken Burns — operators only (see .portrait-idle). */
+.portrait-idle {
+  transform-origin: 50% 28%;
+  will-change: transform;
+  animation: portraitIdle 8.5s ease-in-out infinite;
+}
+.hcard-art .portrait-idle,
+.cdetail-hero .portrait-idle,
+.unit-portrait .portrait-idle {
+  /* Slight overscan so pan/scale never shows empty edges. */
+  width: 112% !important;
+  height: 112% !important;
+  max-width: none;
+}
+@keyframes portraitIdle {
+  0%, 100% { transform: translate(0%, 0%) scale(1); }
+  25% { transform: translate(1.4%, -1.1%) scale(1.035); }
+  50% { transform: translate(-0.8%, 0.7%) scale(1.015); }
+  75% { transform: translate(-1.3%, -0.6%) scale(1.03); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .portrait-idle { animation: none; }
+}
 .portrait-fallback {
   display: grid;
   place-items: center;

@@ -21,6 +21,13 @@ function cardArtSrc(id: string): string {
   return publicAsset(`portraits/${id}.webp`);
 }
 
+/** Desync idle loops so a grid of operators doesn't breathe in lockstep. */
+function portraitIdleDelay(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h + id.charCodeAt(i) * (i + 3)) % 97;
+  return `${-((h / 97) * 8).toFixed(2)}s`;
+}
+
 export function hasCardArt(cardId: string): boolean {
   return (CARD_ART_IDS as readonly string[]).includes(cardId);
 }
@@ -30,16 +37,22 @@ export function Portrait({ cardId, size = 56 }: { cardId: string; size?: number 
   const def = card(cardId);
   const accent = cardColor(cardId);
   const src = hasCardArt(cardId) ? cardArtSrc(cardId) : undefined;
+  const idle = def.type === 'operator';
   if (src) {
     return (
       <img
-        className="portrait"
+        className={`portrait${idle ? ' portrait-idle' : ''}`}
         src={src}
         alt={def.en}
         width={size}
         height={size}
         draggable={false}
-        style={{ width: size, height: size, '--role': accent } as CSSProperties}
+        style={{
+          width: size,
+          height: size,
+          '--role': accent,
+          ...(idle ? { animationDelay: portraitIdleDelay(cardId) } : {}),
+        } as CSSProperties}
       />
     );
   }
