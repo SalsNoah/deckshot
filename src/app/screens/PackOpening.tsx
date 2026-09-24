@@ -12,10 +12,12 @@ const RARITY_LABEL: Record<Rarity, string> = { common: 'COMMON', rare: 'RARE', e
 /** Wait before the next card flips during "flip all", long enough for that rarity's effect. */
 const FLIP_GAP: Record<Rarity, number> = { common: 380, rare: 420, epic: 760, legend: 2700 };
 
-export function PackOpening({ cards, kira, fresh, onClose, onAgain, againLabel }: {
+export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againLabel }: {
   cards: string[];
   /** Per slot: kira result already decided at pull time (operators only). */
   kira: boolean[];
+  /** Per slot: hair-flow cosmetic already decided at pull time. */
+  flow: boolean[];
   /** Per slot: true when this pull is the player's first copy. */
   fresh: boolean[];
   onClose: () => void;
@@ -178,7 +180,7 @@ export function PackOpening({ cards, kira, fresh, onClose, onAgain, againLabel }
                       <span className="pack-card-emblem" />
                     </button>
                     <div className="pack-card-front">
-                      <HandCard cardId={id} cost={card(id).cost} kira={isKira} onClick={() => setPeek(i)} />
+                      <HandCard cardId={id} cost={card(id).cost} kira={isKira} flow={flow[i]} onClick={() => setPeek(i)} />
                     </div>
                   </div>
                   <div className="pack-card-tag">
@@ -210,7 +212,7 @@ export function PackOpening({ cards, kira, fresh, onClose, onAgain, againLabel }
           <div className="pack-spot-rays" />
           <div className="pack-spot-flash" />
           <div className="pack-spot-card">
-            <HandCard cardId={cards[spotlight]} cost={card(cards[spotlight]).cost} kira={kira[spotlight]} />
+            <HandCard cardId={cards[spotlight]} cost={card(cards[spotlight]).cost} kira={kira[spotlight]} flow={flow[spotlight]} />
           </div>
           <div className="pack-spot-title">
             <b>LEGEND</b>
@@ -222,7 +224,7 @@ export function PackOpening({ cards, kira, fresh, onClose, onAgain, againLabel }
       {peek !== null && (
         <div className="modal-bg" onClick={() => setPeek(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <CardDetail cardId={cards[peek]} kira={kira[peek]} />
+            <CardDetail cardId={cards[peek]} kira={kira[peek]} flow={flow[peek]} />
             <button className="btn ghost small" onClick={() => setPeek(null)}>閉じる</button>
           </div>
         </div>

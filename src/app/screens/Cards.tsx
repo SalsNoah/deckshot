@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import { ALL_CARDS, STREAK_ORDER, STREAKS, ZONE_MODS, type CardType } from '../../engine';
-import { hasKira, type Profile } from '../profile';
+import { hasFlow, hasKira, type Profile } from '../profile';
 import { CardDetail, HandCard } from '../ui/cards';
 import { cssUrl } from '../ui/assets';
 import { StreakIcon } from '../ui/icons';
@@ -36,6 +36,7 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
           {list.map((c) => {
             const n = profile.owned[c.id] ?? 0;
             const showKira = hasKira(profile, c.id);
+            const showFlow = hasFlow(profile, c.id);
             const locked = n <= 0;
             return (
               <div key={c.id} className={`collect-card ${locked ? 'locked' : ''} ${showKira ? 'has-kira' : ''}`}>
@@ -44,6 +45,7 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
                   cost={c.cost}
                   disabled={locked}
                   kira={showKira}
+                  flow={showFlow}
                   onClick={() => !locked && setPeek(c.id)}
                 />
                 <span className="collect-count">{locked ? '未所持' : `×${n}`}</span>
@@ -85,7 +87,7 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
       {peek && (
         <div className="modal-bg" onClick={() => setPeek(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <CardDetail cardId={peek} kira={hasKira(profile, peek)} />
+            <CardDetail cardId={peek} kira={hasKira(profile, peek)} flow={hasFlow(profile, peek)} />
             <button className="btn ghost small" onClick={() => setPeek(null)}>閉じる</button>
           </div>
         </div>

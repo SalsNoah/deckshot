@@ -4,6 +4,7 @@ import { LocalCpuMatch, type MatchConnection } from './match';
 import type { OnlineMatch } from './online';
 import { isDeckReady, loadProfile, matchRpDelta, saveProfile, type Profile } from './profile';
 import { setBgm, setSoundEnabled, unlockAudio } from './sfx';
+import { PortraitFlowDefs } from './ui/cards';
 import { Battle, type MatchResult } from './screens/Battle';
 import { Cards } from './screens/Cards';
 import { DeckEdit } from './screens/DeckEdit';
@@ -99,6 +100,7 @@ export function App() {
 
   return (
     <div className="app">
+      <PortraitFlowDefs />
       {screen.name === 'title' && (
         <Title
           profile={profile}
@@ -145,7 +147,7 @@ export function App() {
         />
       )}
       {screen.name === 'battle' && (
-        <Battle key={screen.key} conn={screen.conn} onExit={exitBattle} onFinish={onFinish} kiraOwned={profile.kiraOwned} />
+        <Battle key={screen.key} conn={screen.conn} onExit={exitBattle} onFinish={onFinish} kiraOwned={profile.kiraOwned} flowOwned={profile.flowOwned} />
       )}
       {screen.name === 'howto' && (
         <HowTo onBack={() => setScreen(screen.next ?? { name: 'title' })} />

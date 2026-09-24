@@ -5,6 +5,9 @@ export const GACHA_PULL_SIZE = 3;
 /** Operator pulls become kira (shiny) at this rate. Rolled silently. */
 export const KIRA_CHANCE = 0.1;
 
+/** Operator pulls get hair-flow portrait animation at this rate. Rolled silently. */
+export const FLOW_CHANCE = 0.01;
+
 /** One ticket = one 3-card pull. */
 export const TICKET_PACKS: { id: string; tickets: number; label: string; priceLabel: string }[] = [
   { id: 't1', tickets: 1, label: 'チケット×1', priceLabel: '¥120' },
@@ -31,6 +34,8 @@ export interface PullResult {
   cardId: string;
   /** True when this pull is a kira operator. */
   kira: boolean;
+  /** True when this pull has hair-flow portrait animation. */
+  flow: boolean;
 }
 
 function todayKey(d = new Date()): string {
@@ -64,17 +69,24 @@ function pickCard(rng: () => number): string {
   return pool[Math.floor(rng() * pool.length)] ?? ALL_CARDS[0].id;
 }
 
-/** Operators (characters) can become kira. Gear / tactics never do. */
-export function canRollKira(cardId: string): boolean {
+/** Operators (characters) can roll cosmetics. Gear / tactics never do. */
+export function canRollOperatorCosmetic(cardId: string): boolean {
   return card(cardId).type === 'operator';
 }
 
-/** Draw GACHA_PULL_SIZE cards. Kira is rolled silently for operators. */
+/** @deprecated use canRollOperatorCosmetic */
+export function canRollKira(cardId: string): boolean {
+  return canRollOperatorCosmetic(cardId);
+}
+
+/** Draw GACHA_PULL_SIZE cards. Cosmetics are rolled silently for operators. */
 export function pullGacha(rng: () => number = Math.random): PullResult[] {
   return Array.from({ length: GACHA_PULL_SIZE }, () => {
     const cardId = pickCard(rng);
-    const kira = canRollKira(cardId) && rng() < KIRA_CHANCE;
-    return { cardId, kira };
+    const op = canRollOperatorCosmetic(cardId);
+    const kira = op && rng() < KIRA_CHANCE;
+    const flow = op && rng() < FLOW_CHANCE;
+    return { cardId, kira, flow };
   });
 }
 
@@ -93,6 +105,16 @@ export function grantKira(kiraOwned: Record<string, number>, pulled: PullResult[
   const next = { ...kiraOwned };
   for (const p of pulled) {
     if (!p.kira) continue;
+    next[p.cardId] = (next[p.cardId] ?? 0) + 1;
+  }
+  return next;
+}
+
+/** Merge hair-flow results into a flow-owned map (operators only). */
+export function grantFlow(flowOwned: Record<string, number>, pulled: PullResult[]): Record<string, number> {
+  const next = { ...flowOwned };
+  for (const p of pulled) {
+    if (!p.flow) continue;
     next[p.cardId] = (next[p.cardId] ?? 0) + 1;
   }
   return next;

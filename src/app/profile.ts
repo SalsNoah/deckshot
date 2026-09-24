@@ -17,6 +17,8 @@ export interface Profile {
   owned: Record<string, number>;
   /** Owned kira (shiny) operator copies. Cosmetic; still counts via `owned`. */
   kiraOwned: Record<string, number>;
+  /** Owned hair-flow animated operator copies. Cosmetic; still counts via `owned`. */
+  flowOwned: Record<string, number>;
   /** Paid gacha tickets (1 ticket = 1 pull of 3 cards). */
   gachaTickets: number;
   /** Local calendar date `YYYY-MM-DD` of last free gacha, or null. */
@@ -48,6 +50,7 @@ const DEFAULT: Profile = {
   deck: STARTER.deck,
   owned: STARTER.owned,
   kiraOwned: {},
+  flowOwned: {},
   gachaTickets: 3,
   lastFreeGacha: null,
   difficulty: 'normal',
@@ -64,6 +67,14 @@ function migrate(raw: Partial<Profile> & Record<string, unknown>): Profile {
       if (!raw.kiraOwned || typeof raw.kiraOwned !== 'object') return {};
       const out: Record<string, number> = {};
       for (const [id, n] of Object.entries(raw.kiraOwned as Record<string, unknown>)) {
+        if (typeof n === 'number' && n > 0) out[id] = Math.floor(n);
+      }
+      return out;
+    })(),
+    flowOwned: (() => {
+      if (!raw.flowOwned || typeof raw.flowOwned !== 'object') return {};
+      const out: Record<string, number> = {};
+      for (const [id, n] of Object.entries(raw.flowOwned as Record<string, unknown>)) {
         if (typeof n === 'number' && n > 0) out[id] = Math.floor(n);
       }
       return out;
@@ -105,6 +116,7 @@ export function loadProfile(): Profile {
     name: `Player${Math.floor(1000 + Math.random() * 9000)}`,
     owned: { ...DEFAULT.owned },
     kiraOwned: {},
+    flowOwned: {},
     deck: [...DEFAULT.deck],
   };
 }
@@ -112,6 +124,11 @@ export function loadProfile(): Profile {
 /** True when the player owns at least one kira copy of this operator. */
 export function hasKira(p: { kiraOwned?: Record<string, number> } | null | undefined, cardId: string): boolean {
   return (p?.kiraOwned?.[cardId] ?? 0) > 0;
+}
+
+/** True when the player owns at least one hair-flow copy of this operator. */
+export function hasFlow(p: { flowOwned?: Record<string, number> } | null | undefined, cardId: string): boolean {
+  return (p?.flowOwned?.[cardId] ?? 0) > 0;
 }
 
 

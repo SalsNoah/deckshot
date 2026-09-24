@@ -21,11 +21,25 @@ function cardArtSrc(id: string): string {
   return publicAsset(`portraits/${id}.webp`);
 }
 
-/** Desync idle loops so a grid of operators doesn't breathe in lockstep. */
-function portraitIdleDelay(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h + id.charCodeAt(i) * (i + 3)) % 97;
-  return `${-((h / 97) * 8).toFixed(2)}s`;
+/** Shared SVG filter for hair-flow portraits (mounted once). */
+export function PortraitFlowDefs() {
+  return (
+    <svg className="portrait-flow-defs" aria-hidden width="0" height="0">
+      <defs>
+        <filter id="portraitHairFlow" x="-12%" y="-12%" width="124%" height="124%" colorInterpolationFilters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.014 0.045" numOctaves="2" seed="3" result="noise">
+            <animate
+              attributeName="baseFrequency"
+              dur="2.8s"
+              values="0.012 0.035;0.022 0.06;0.015 0.042;0.012 0.035"
+              repeatCount="indefinite"
+            />
+          </feTurbulence>
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="6.5" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </defs>
+    </svg>
+  );
 }
 
 export function hasCardArt(cardId: string): boolean {
@@ -33,26 +47,20 @@ export function hasCardArt(cardId: string): boolean {
 }
 
 /** Neon card portrait. Falls back to a coloured tile if art is missing. */
-export function Portrait({ cardId, size = 56 }: { cardId: string; size?: number }) {
+export function Portrait({ cardId, size = 56, flow }: { cardId: string; size?: number; flow?: boolean }) {
   const def = card(cardId);
   const accent = cardColor(cardId);
   const src = hasCardArt(cardId) ? cardArtSrc(cardId) : undefined;
-  const idle = def.type === 'operator';
   if (src) {
     return (
       <img
-        className={`portrait${idle ? ' portrait-idle' : ''}`}
+        className={`portrait${flow ? ' portrait-flow' : ''}`}
         src={src}
         alt={def.en}
         width={size}
         height={size}
         draggable={false}
-        style={{
-          width: size,
-          height: size,
-          '--role': accent,
-          ...(idle ? { animationDelay: portraitIdleDelay(cardId) } : {}),
-        } as CSSProperties}
+        style={{ width: size, height: size, '--role': accent } as CSSProperties}
       />
     );
   }
@@ -83,7 +91,7 @@ export function StatRow({ atk, hp, aim, base, size = 'sm' }: {
   );
 }
 
-export function HandCard({ cardId, cost, selected, disabled, used, kira, onClick }: {
+export function HandCard({ cardId, cost, selected, disabled, used, kira, flow, onClick }: {
   cardId: string;
   cost: number;
   selected?: boolean;
@@ -91,6 +99,8 @@ export function HandCard({ cardId, cost, selected, disabled, used, kira, onClick
   used?: boolean;
   /** Gold-border glossy variant (operators). */
   kira?: boolean;
+  /** Hair-flow portrait animation (rare gacha cosmetic). */
+  flow?: boolean;
   onClick?: MouseEventHandler;
 }) {
   const def = card(cardId);
@@ -98,12 +108,12 @@ export function HandCard({ cardId, cost, selected, disabled, used, kira, onClick
   const art = hasCardArt(cardId);
   return (
     <button
-      className={`hcard ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''} ${used ? 'used' : ''} ${kira ? 'kira' : ''} type-${def.type} ${art ? 'has-art' : ''}`}
+      className={`hcard ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''} ${used ? 'used' : ''} ${kira ? 'kira' : ''} ${flow ? 'flow' : ''} type-${def.type} ${art ? 'has-art' : ''}`}
       style={{ '--c': color, '--r': RARITY_COLOR[def.rarity] } as CSSProperties}
       onClick={onClick}
     >
       <div className="hcard-art" aria-hidden>
-        {art ? <Portrait cardId={cardId} size={140} /> : <CardIcon cardId={cardId} size={36} />}
+        {art ? <Portrait cardId={cardId} size={140} flow={flow} /> : <CardIcon cardId={cardId} size={36} />}
       </div>
       <div className="hcard-shade" aria-hidden />
       {kira && <div className="hcard-kira-foil" aria-hidden />}
@@ -121,11 +131,12 @@ export function HandCard({ cardId, cost, selected, disabled, used, kira, onClick
   );
 }
 
-export function CardDetail({ cardId, unit, compact, kira }: {
+export function CardDetail({ cardId, unit, compact, kira, flow }: {
   cardId: string;
   unit?: UnitSnap;
   compact?: boolean;
   kira?: boolean;
+  flow?: boolean;
 }) {
   const def = card(cardId);
   const color = cardColor(cardId);
@@ -137,7 +148,7 @@ export function CardDetail({ cardId, unit, compact, kira }: {
     <div className={`cdetail ${compact ? 'compact' : ''} type-${def.type} ${art ? 'has-art' : ''} ${kira ? 'kira' : ''}`} style={{ '--c': color, '--r': RARITY_COLOR[def.rarity] } as CSSProperties}>
       {art && (
         <div className="cdetail-hero" aria-hidden>
-          <Portrait cardId={cardId} size={compact ? 220 : 360} />
+          <Portrait cardId={cardId} size={compact ? 220 : 360} flow={flow} />
           <div className="cdetail-hero-shade" />
           {kira && <div className="cdetail-kira-foil" aria-hidden />}
         </div>
@@ -197,10 +208,11 @@ export interface UnitTileProps {
   mine: boolean;
   state?: 'legal' | 'selected' | 'moving' | 'ghost' | 'dim';
   badges?: string[];
+  flow?: boolean;
   onClick?: MouseEventHandler;
 }
 
-export const UnitTile = forwardRef<HTMLDivElement, UnitTileProps>(function UnitTile({ u, mine, state, badges, onClick }, ref) {
+export const UnitTile = forwardRef<HTMLDivElement, UnitTileProps>(function UnitTile({ u, mine, state, badges, flow, onClick }, ref) {
   const def = card(u.cardId);
   const role = def.role ?? 'assault';
   const guard = hasAbility(u as unknown as Unit, 'guard');
@@ -213,7 +225,7 @@ export const UnitTile = forwardRef<HTMLDivElement, UnitTileProps>(function UnitT
       onClick={onClick}
       data-uid={u.uid}
     >
-      <div className="unit-portrait"><Portrait cardId={u.cardId} size={30} /></div>
+      <div className="unit-portrait"><Portrait cardId={u.cardId} size={30} flow={flow} /></div>
       <div className="unit-body">
         <div className="unit-top">
           <span className="unit-name">{def.en}</span>

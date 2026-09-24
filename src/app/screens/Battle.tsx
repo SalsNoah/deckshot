@@ -8,7 +8,7 @@ import {
 } from '../../engine';
 import { EMOTES, type EmoteId } from '../../net/protocol';
 import type { MatchConnection } from '../match';
-import { hasKira } from '../profile';
+import { hasFlow, hasKira } from '../profile';
 import { sfx, vibrate, type ShotKind } from '../sfx';
 import { CardDetail, HandCard, UnitTile } from '../ui/cards';
 import { cssUrl } from '../ui/assets';
@@ -137,12 +137,14 @@ function describeAction(view: GameView, a: Action): { icon: string; label: strin
   }
 }
 
-export function Battle({ conn, onExit, onFinish, kiraOwned }: {
+export function Battle({ conn, onExit, onFinish, kiraOwned, flowOwned }: {
   conn: MatchConnection;
   onExit: () => void;
   onFinish: (r: MatchResult) => number | null;
   /** Player's owned kira operators — cosmetic on hand / detail. */
   kiraOwned?: Record<string, number>;
+  /** Player's owned hair-flow operators — portrait animation. */
+  flowOwned?: Record<string, number>;
 }) {
   const me = conn.initialView.me;
   const opp: PlayerId = me === 0 ? 1 : 0;
@@ -758,6 +760,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned }: {
         mine={side === me}
         state={state}
         badges={pendingByUnit.get(key)}
+        flow={side === me ? hasFlow({ flowOwned }, u.cardId) : false}
         ref={(el) => {
           if (isGhost) return;
           if (el) tileRefs.current.set(u.uid, el);
@@ -962,7 +965,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned }: {
       {/* Selected card preview */}
       {phase === 'plan' && selectedCard && (
         <div className="preview">
-          <CardDetail cardId={selectedCard.cardId} compact kira={hasKira({ kiraOwned }, selectedCard.cardId)} />
+          <CardDetail cardId={selectedCard.cardId} compact kira={hasKira({ kiraOwned }, selectedCard.cardId)} flow={hasFlow({ flowOwned }, selectedCard.cardId)} />
           <div className="preview-actions">
             {selectedDef?.type === 'tactic' && selectedDef.target === 'none' ? (
               <button className="btn primary small" onClick={() => addAction({ t: 'tactic', hid: selectedCard.hid })}>使用する</button>
@@ -986,6 +989,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned }: {
               cost={def.cost}
               used={used}
               kira={hasKira({ kiraOwned }, h.cardId)}
+              flow={hasFlow({ flowOwned }, h.cardId)}
               selected={sel?.kind === 'hand' && sel.hid === h.hid}
               disabled={!used && def.cost > credits}
               onClick={() => onHandClick(h.hid)}
@@ -1042,7 +1046,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned }: {
       {detail && (
         <div className="modal-bg" onClick={() => setDetail(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <CardDetail cardId={detail.cardId} unit={detail.unit} kira={hasKira({ kiraOwned }, detail.cardId)} />
+            <CardDetail cardId={detail.cardId} unit={detail.unit} kira={hasKira({ kiraOwned }, detail.cardId)} flow={hasFlow({ flowOwned }, detail.cardId)} />
             {detail.movable && detail.unit && phase === 'plan' && (
               <div className="move-btns">
                 {[detail.unit.zone - 1, detail.unit.zone + 1].filter((z) => z >= 0 && z <= 2).map((z) => (

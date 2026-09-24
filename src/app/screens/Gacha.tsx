@@ -1,7 +1,7 @@
 import { Dices, Ticket } from 'lucide-react';
 import { useState, type CSSProperties } from 'react';
 import {
-  canFreeGacha, freeGachaDate, GACHA_PULL_SIZE, grantCards, grantKira, pullGacha, TICKET_PACKS,
+  canFreeGacha, freeGachaDate, GACHA_PULL_SIZE, grantCards, grantFlow, grantKira, pullGacha, TICKET_PACKS,
 } from '../gacha';
 import type { Profile } from '../profile';
 import { unlockAudio } from '../sfx';
@@ -14,7 +14,7 @@ export function Gacha({ profile, onChange, onBack }: {
   onBack: () => void;
 }) {
   const free = canFreeGacha(profile.lastFreeGacha);
-  const [opening, setOpening] = useState<{ cards: string[]; kira: boolean[]; fresh: boolean[]; key: number } | null>(null);
+  const [opening, setOpening] = useState<{ cards: string[]; kira: boolean[]; flow: boolean[]; fresh: boolean[]; key: number } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const flash = (msg: string) => {
@@ -35,14 +35,16 @@ export function Gacha({ profile, onChange, onBack }: {
     const pulled = pullGacha();
     const cards = pulled.map((p) => p.cardId);
     const kira = pulled.map((p) => p.kira);
+    const flow = pulled.map((p) => p.flow);
     const fresh = cards.map((id, i) => !profile.owned[id] && cards.indexOf(id) === i);
     onChange({
       owned: grantCards(profile.owned, pulled),
       kiraOwned: grantKira(profile.kiraOwned ?? {}, pulled),
+      flowOwned: grantFlow(profile.flowOwned ?? {}, pulled),
       gachaTickets: mode === 'ticket' ? profile.gachaTickets - 1 : profile.gachaTickets,
       lastFreeGacha: mode === 'free' ? freeGachaDate() : profile.lastFreeGacha,
     });
-    setOpening({ cards, kira, fresh, key: Date.now() });
+    setOpening({ cards, kira, flow, fresh, key: Date.now() });
   };
 
   if (opening) {
@@ -51,6 +53,7 @@ export function Gacha({ profile, onChange, onBack }: {
         key={opening.key}
         cards={opening.cards}
         kira={opening.kira}
+        flow={opening.flow}
         fresh={opening.fresh}
         onClose={() => setOpening(null)}
         onAgain={profile.gachaTickets > 0 ? () => runPull('ticket') : undefined}
