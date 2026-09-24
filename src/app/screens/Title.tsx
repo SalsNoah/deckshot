@@ -3,6 +3,7 @@ import { useState, type CSSProperties } from 'react';
 import { canFreeGacha } from '../gacha';
 import { isDeckReady, rankOf, type Profile } from '../profile';
 import { unlockAudio } from '../sfx';
+import { cssUrl } from '../ui/assets';
 
 export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, onDeckEdit, onGacha }: {
   profile: Profile;
@@ -28,7 +29,7 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
   };
 
   return (
-    <div className="screen title-screen has-art-bg" style={{ '--screen-bg': 'url(./bgs/bg-title.webp)' } as CSSProperties}>
+    <div className="screen title-screen has-art-bg" style={{ '--screen-bg': cssUrl('bgs/bg-title.webp') } as CSSProperties}>
       <button
         className="icon-btn sound-toggle"
         onClick={() => {

@@ -2,15 +2,13 @@ import {
   Boxes, Building2, Crosshair, EyeOff, Landmark, Mountain, Radar, Shield, Skull, Store, Waypoints,
   type LucideIcon,
 } from 'lucide-react';
+import { publicAsset } from './assets';
 
-/** Neon environment art for each zone modifier. */
-export const ZONE_ART: Record<string, string> = Object.fromEntries(
-  ['open', 'highground', 'choke', 'longrange', 'cqb', 'supply', 'toxic', 'outpost', 'dark', 'cover', 'radar']
-    .map((id) => [id, `./zones/${id}.webp`]),
-);
+const ZONE_IDS = ['open', 'highground', 'choke', 'longrange', 'cqb', 'supply', 'toxic', 'outpost', 'dark', 'cover', 'radar'] as const;
 
 export function zoneArtUrl(modId: string): string | undefined {
-  return ZONE_ART[modId];
+  if (!(ZONE_IDS as readonly string[]).includes(modId)) return undefined;
+  return publicAsset(`zones/${modId}.webp`);
 }
 
 export interface ZoneVisual {

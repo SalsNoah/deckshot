@@ -4,6 +4,7 @@ import {
 } from '../../engine';
 import type { Profile } from '../profile';
 import { CardDetail, HandCard } from '../ui/cards';
+import { cssUrl } from '../ui/assets';
 import { TYPE_LABEL } from '../ui/text';
 
 const TABS: { id: CardType | 'all'; name: string }[] = [
@@ -85,7 +86,7 @@ export function DeckEdit({ profile, onChange, onBack }: {
   const uniqueDeck = [...deckCounts.entries()].sort((a, b) => card(a[0]).cost - card(b[0]).cost);
 
   return (
-    <div className="screen screen-scroll has-art-bg deck-edit" style={{ '--screen-bg': 'url(./bgs/bg-menu.webp)' } as CSSProperties}>
+    <div className="screen screen-scroll has-art-bg deck-edit" style={{ '--screen-bg': cssUrl('bgs/bg-menu.webp') } as CSSProperties}>
       <div className="screen-head">
         <button className="btn ghost small" onClick={onBack}>← 戻る</button>
         <h2>デッキ編成</h2>

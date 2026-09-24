@@ -1,6 +1,7 @@
 import { Copy, Users, Zap } from 'lucide-react';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { defaultServerUrl, OnlineClient, type LobbyStatus, type OnlineMatch } from '../online';
+import { cssUrl } from '../ui/assets';
 
 export function Lobby({ name, deck, onStart, onBack }: {
   name: string;
@@ -31,7 +32,7 @@ export function Lobby({ name, deck, onStart, onBack }: {
   const connected = status.s !== 'connecting' && status.s !== 'error' && status.s !== 'closed';
 
   return (
-    <div className="screen screen-scroll lobby has-art-bg" style={{ '--screen-bg': 'url(./bgs/bg-menu.webp)' } as CSSProperties}>
+    <div className="screen screen-scroll lobby has-art-bg" style={{ '--screen-bg': cssUrl('bgs/bg-menu.webp') } as CSSProperties}>
       <div className="screen-head">
         <button className="btn ghost small" onClick={onBack}>← 戻る</button>
         <h2>オンライン対戦</h2>

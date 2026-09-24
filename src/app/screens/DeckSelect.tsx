@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import { DECK_SIZE, card, countCards, validateDeck, type Difficulty } from '../../engine';
 import type { Profile } from '../profile';
 import { CardDetail } from '../ui/cards';
+import { cssUrl } from '../ui/assets';
 import { CardIcon } from '../ui/icons';
 
 const DIFFS: { id: Difficulty; name: string; desc: string }[] = [
@@ -24,7 +25,7 @@ export function DeckSelect({ mode, profile, difficulty, onChange, onStart, onBac
   const unique = [...countCards(profile.deck).entries()].sort((a, b) => card(a[0]).cost - card(b[0]).cost);
 
   return (
-    <div className="screen screen-scroll has-art-bg" style={{ '--screen-bg': 'url(./bgs/bg-menu.webp)' } as CSSProperties}>
+    <div className="screen screen-scroll has-art-bg" style={{ '--screen-bg': cssUrl('bgs/bg-menu.webp') } as CSSProperties}>
       <div className="screen-head">
         <button className="btn ghost small" onClick={onBack}>← 戻る</button>
         <h2>{mode === 'cpu' ? 'CPU対戦' : 'オンライン対戦'}</h2>

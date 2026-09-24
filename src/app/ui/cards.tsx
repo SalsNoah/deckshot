@@ -2,6 +2,7 @@ import { Crosshair, EyeOff, Ghost, Heart, Shield, Swords } from 'lucide-react';
 import { forwardRef, type CSSProperties, type MouseEventHandler } from 'react';
 import { card, hasAbility, type Unit, type UnitSnap } from '../../engine';
 import { CardIcon, cardColor, RARITY_COLOR, ROLE_COLOR, ROLE_LABEL, WeaponIcon } from './icons';
+import { publicAsset } from './assets';
 import { cardKeywords, TYPE_LABEL } from './text';
 
 const CARD_ART_IDS = [
@@ -16,19 +17,19 @@ const CARD_ART_IDS = [
   'eco', 'fallback', 'smoke', 'flashbang', 'stim', 'drone', 'focusfire', 'frag', 'molotov', 'precision', 'reinforce', 'c4',
 ] as const;
 
-const CARD_ART: Record<string, string> = Object.fromEntries(
-  CARD_ART_IDS.map((id) => [id, `./portraits/${id}.webp`]),
-);
+function cardArtSrc(id: string): string {
+  return publicAsset(`portraits/${id}.webp`);
+}
 
 export function hasCardArt(cardId: string): boolean {
-  return Boolean(CARD_ART[cardId]);
+  return (CARD_ART_IDS as readonly string[]).includes(cardId);
 }
 
 /** Neon card portrait. Falls back to a coloured tile if art is missing. */
 export function Portrait({ cardId, size = 56 }: { cardId: string; size?: number }) {
   const def = card(cardId);
   const accent = cardColor(cardId);
-  const src = CARD_ART[cardId];
+  const src = hasCardArt(cardId) ? cardArtSrc(cardId) : undefined;
   if (src) {
     return (
       <img

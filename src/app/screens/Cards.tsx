@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import { ALL_CARDS, STREAK_ORDER, STREAKS, ZONE_MODS, type CardType } from '../../engine';
 import type { Profile } from '../profile';
 import { CardDetail, HandCard } from '../ui/cards';
+import { cssUrl } from '../ui/assets';
 import { StreakIcon } from '../ui/icons';
 import { zoneVisual } from '../ui/zoneArt';
 
@@ -19,7 +20,7 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
   const ownedKinds = Object.values(profile.owned).filter((n) => n > 0).length;
 
   return (
-    <div className="screen screen-scroll has-art-bg" style={{ '--screen-bg': 'url(./bgs/bg-cards.webp)' } as CSSProperties}>
+    <div className="screen screen-scroll has-art-bg" style={{ '--screen-bg': cssUrl('bgs/bg-cards.webp') } as CSSProperties}>
       <div className="screen-head">
         <button className="btn ghost small" onClick={onBack}>← 戻る</button>
         <h2>カード一覧</h2>
@@ -66,7 +67,7 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
                 <div
                   key={z.id}
                   className="zone-card"
-                  style={{ '--zone-art': `url(./zones/${z.id}.webp)`, '--zone-c': vis.accent } as CSSProperties}
+                  style={{ '--zone-art': cssUrl(`zones/${z.id}.webp`), '--zone-c': vis.accent } as CSSProperties}
                 >
                   <div className="zone-card-art" aria-hidden />
                   <div className="zone-card-body">

@@ -1,5 +1,6 @@
 import { Bomb, Coins, Crosshair, Flag, Hand, Radiation, Target } from 'lucide-react';
 import type { CSSProperties } from 'react';
+import { cssUrl } from '../ui/assets';
 import { KEYWORD_TEXT } from '../ui/text';
 
 export function HowToContent({ compact }: { compact?: boolean }) {
@@ -70,7 +71,7 @@ export function HowToContent({ compact }: { compact?: boolean }) {
 
 export function HowTo({ onBack }: { onBack: () => void }) {
   return (
-    <div className="screen screen-scroll has-art-bg" style={{ '--screen-bg': 'url(./bgs/bg-menu.webp)' } as CSSProperties}>
+    <div className="screen screen-scroll has-art-bg" style={{ '--screen-bg': cssUrl('bgs/bg-menu.webp') } as CSSProperties}>
       <div className="screen-head">
         <button className="btn ghost small" onClick={onBack}>← 戻る</button>
         <h2>遊び方</h2>

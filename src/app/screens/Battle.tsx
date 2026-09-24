@@ -9,6 +9,7 @@ import { EMOTES, type EmoteId } from '../../net/protocol';
 import type { MatchConnection } from '../match';
 import { sfx, vibrate, type ShotKind } from '../sfx';
 import { CardDetail, HandCard, UnitTile } from '../ui/cards';
+import { cssUrl } from '../ui/assets';
 import { CardIcon, StreakIcon, WeaponIcon } from '../ui/icons';
 import { REASON_TEXT, TARGET_HINT } from '../ui/text';
 import { zoneVisual } from '../ui/zoneArt';
@@ -712,7 +713,7 @@ export function Battle({ conn, onExit, onFinish }: {
   return (
     <div
       className={`battle phase-${phase} has-art-bg`}
-      style={{ '--screen-bg': 'url(./bgs/bg-battle.webp)' } as CSSProperties}
+      style={{ '--screen-bg': cssUrl('bgs/bg-battle.webp') } as CSSProperties}
       ref={rootRef}
     >
       {/* Opponent HUD */}
@@ -764,7 +765,7 @@ export function Battle({ conn, onExit, onFinish }: {
               key={zi}
               className={`zone has-art ${zoneLegal ? 'legal' : ''} ${targets && !zoneLegal && targets.zones.length ? 'dim' : ''} ${z.smoked ? 'smoked' : ''}`}
               style={{
-                '--zone-art': `url(./zones/${z.modId}.webp)`,
+                '--zone-art': cssUrl(`zones/${z.modId}.webp`),
                 '--zone-c': vis.accent,
               } as CSSProperties}
               ref={(el) => { zoneRefs.current[zi] = el; }}

@@ -6,6 +6,7 @@ import {
 } from '../gacha';
 import type { Profile } from '../profile';
 import { CardDetail, HandCard } from '../ui/cards';
+import { cssUrl } from '../ui/assets';
 import { RARITY_COLOR } from '../ui/icons';
 
 export function Gacha({ profile, onChange, onBack }: {
@@ -51,7 +52,7 @@ export function Gacha({ profile, onChange, onBack }: {
   };
 
   return (
-    <div className="screen screen-scroll has-art-bg gacha-screen" style={{ '--screen-bg': 'url(./bgs/bg-menu.webp)' } as CSSProperties}>
+    <div className="screen screen-scroll has-art-bg gacha-screen" style={{ '--screen-bg': cssUrl('bgs/bg-menu.webp') } as CSSProperties}>
       <div className="screen-head">
         <button className="btn ghost small" onClick={onBack}>← 戻る</button>
         <h2>ガチャ</h2>
