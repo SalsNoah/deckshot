@@ -1,48 +1,46 @@
 /**
- * Bake hair-flow loops from static operator portraits.
+ * Bake hair-flow animated GIFs from static operator portraits.
  *
  *   npm run portraits:anim
  *
- * Reads `public/portraits/<id>.webp`, warps the crown/hair into 12 frames,
- * and writes a vertical frame strip to `public/portraits/anim/<id>.webp`.
- * The UI swaps the still for that strip and plays it with CSS steps().
+ * Reads `public/portraits/<id>.webp` and writes looping GIFs to
+ * `public/portraits/anim/<id>.gif`. Runtime swaps the still for this GIF.
  */
-import { mkdir, readdir } from 'node:fs/promises';
+import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { GIFEncoder, quantize, applyPalette } from 'gifenc/dist/gifenc.esm.js';
 import sharp from 'sharp';
 
 const ROOT = join(import.meta.dirname, '..');
 const SRC_DIR = join(ROOT, 'public', 'portraits');
 const OUT_DIR = join(SRC_DIR, 'anim');
 
-/** Operators only — gear/tactics are skipped even if present. */
 const OPERATORS = [
   'rookie', 'scout', 'jolt', 'bulwark', 'haze', 'wire', 'kingpin', 'blitz', 'breacher', 'ghost',
   'angel', 'banshee', 'hawk', 'reaper', 'vanguard', 'titan', 'ace', 'deadeye',
   'shard', 'anchor', 'mimic', 'widow', 'leech', 'blast', 'martyr', 'phoenix', 'pack', 'lonewolf', 'scav', 'spark',
 ] as const;
 
-const OUT_W = 384;
-const FRAMES = 12;
-/** Max horizontal sway in source pixels (at hair tip). */
-const AMP_X = 7.5;
-/** Max vertical bob in source pixels. */
-const AMP_Y = 2.2;
+const OUT_W = 288;
+const FRAMES = 16;
+const DELAY_MS = 70;
+const AMP_X = 9;
+const AMP_Y = 2.6;
+const MAX_COLORS = 192;
 
 function smoothstep(edge0: number, edge1: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
   return t * t * (3 - 2 * t);
 }
 
-/** Hair / fringe mask: strong at the top, fades before the torso. */
 function hairWeight(nx: number, ny: number): number {
-  const top = 1 - smoothstep(0.08, 0.52, ny);
-  const side = smoothstep(0.04, 0.22, Math.min(nx, 1 - nx));
-  return top * (0.55 + 0.45 * side);
+  const top = 1 - smoothstep(0.05, 0.48, ny);
+  const side = smoothstep(0.02, 0.18, Math.min(nx, 1 - nx));
+  return top * (0.45 + 0.55 * side);
 }
 
 function sampleBilinear(
-  src: Buffer,
+  src: Uint8Array,
   w: number,
   h: number,
   x: number,
@@ -71,33 +69,26 @@ function sampleBilinear(
   }
 }
 
-function warpFrame(
-  src: Buffer,
-  w: number,
-  h: number,
-  phase: number,
-): Buffer {
-  const out = Buffer.alloc(w * h * 4);
+function warpFrame(src: Uint8Array, w: number, h: number, phase: number): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(w * h * 4);
   for (let y = 0; y < h; y++) {
-    const ny = y / (h - 1);
+    const ny = y / Math.max(1, h - 1);
     for (let x = 0; x < w; x++) {
-      const nx = x / (w - 1);
+      const nx = x / Math.max(1, w - 1);
       const wt = hairWeight(nx, ny);
       const oi = (y * w + x) * 4;
-      if (wt < 0.02) {
-        const si = oi;
-        out[oi] = src[si]!;
-        out[oi + 1] = src[si + 1]!;
-        out[oi + 2] = src[si + 2]!;
-        out[oi + 3] = src[si + 3]!;
+      if (wt < 0.012) {
+        out[oi] = src[oi]!;
+        out[oi + 1] = src[oi + 1]!;
+        out[oi + 2] = src[oi + 2]!;
+        out[oi + 3] = src[oi + 3]!;
         continue;
       }
-      // Layered sine strands — denser near the crown.
-      const strand = Math.sin(nx * 18 + ny * 6) * 0.55 + Math.sin(nx * 31 - ny * 9) * 0.25;
-      const wave = Math.sin(phase * Math.PI * 2 + ny * 9 + nx * 2.5 + strand);
-      const wave2 = Math.sin(phase * Math.PI * 2 * 1.35 + ny * 14 - nx * 4);
-      const dx = (wave * AMP_X + wave2 * AMP_X * 0.35) * wt;
-      const dy = (Math.sin(phase * Math.PI * 2 + nx * 8) * AMP_Y) * wt * 0.85;
+      const strand = Math.sin(nx * 16 + ny * 5) * 0.55 + Math.sin(nx * 28 - ny * 8) * 0.3;
+      const wave = Math.sin(phase * Math.PI * 2 + ny * 8 + nx * 2 + strand);
+      const wave2 = Math.sin(phase * Math.PI * 2 * 1.35 + ny * 12.5 - nx * 3.5);
+      const dx = (wave * AMP_X + wave2 * AMP_X * 0.45) * wt;
+      const dy = Math.sin(phase * Math.PI * 2 + nx * 7) * AMP_Y * wt * 0.9;
       const sx = Math.min(w - 1.001, Math.max(0, x - dx));
       const sy = Math.min(h - 1.001, Math.max(0, y - dy));
       sampleBilinear(src, w, h, sx, sy, out, oi);
@@ -106,7 +97,7 @@ function warpFrame(
   return out;
 }
 
-async function loadPortrait(id: string): Promise<{ data: Buffer; width: number; height: number } | null> {
+async function loadPortrait(id: string): Promise<{ data: Uint8Array; width: number; height: number } | null> {
   const srcPath = join(SRC_DIR, `${id}.webp`);
   try {
     const { data, info } = await sharp(srcPath)
@@ -114,25 +105,27 @@ async function loadPortrait(id: string): Promise<{ data: Buffer; width: number; 
       .ensureAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
-    return { data, width: info.width, height: info.height };
+    return { data: new Uint8Array(data), width: info.width, height: info.height };
   } catch {
     return null;
   }
 }
 
-async function writeStrip(id: string, frames: Buffer[], width: number, height: number) {
-  const pages = frames.length;
-  const strip = Buffer.concat(frames);
-  // Vertical sprite sheet — played with CSS `steps()` at runtime.
-  await sharp(strip, {
-    raw: { width, height: height * pages, channels: 4 },
-  })
-    .webp({
-      quality: 78,
-      alphaQuality: 80,
-      effort: 4,
-    })
-    .toFile(join(OUT_DIR, `${id}.webp`));
+async function writeGif(id: string, frames: Uint8ClampedArray[], width: number, height: number) {
+  // Shared palette from the still (frame 0) keeps colors stable across the loop.
+  const palette = quantize(frames[0]!, MAX_COLORS, { format: 'rgb565' });
+  const gif = GIFEncoder();
+  for (let i = 0; i < frames.length; i++) {
+    const index = applyPalette(frames[i]!, palette, 'rgb565');
+    gif.writeFrame(index, width, height, {
+      palette: i === 0 ? palette : undefined,
+      delay: DELAY_MS,
+      repeat: 0,
+      dispose: 1,
+    });
+  }
+  gif.finish();
+  await writeFile(join(OUT_DIR, `${id}.gif`), gif.bytes());
 }
 
 async function bakeOne(id: string): Promise<boolean> {
@@ -142,18 +135,24 @@ async function bakeOne(id: string): Promise<boolean> {
     return false;
   }
   const { data, width, height } = loaded;
-  const frames: Buffer[] = [];
+  const frames: Uint8ClampedArray[] = [];
   for (let i = 0; i < FRAMES; i++) {
-    const phase = i / FRAMES;
-    frames.push(warpFrame(data, width, height, phase));
+    frames.push(warpFrame(data, width, height, i / FRAMES));
   }
-  await writeStrip(id, frames, width, height);
-  console.log(`ok  ${id}.webp (${FRAMES}f @ ${width}x${height})`);
-  return true;
+  await writeGif(id, frames, width, height);
+  const meta = await sharp(join(OUT_DIR, `${id}.gif`), { animated: true }).metadata();
+  const pages = meta.pages ?? 1;
+  console.log(`ok  ${id}.gif  pages=${pages}  ${meta.width}x${meta.pageHeight ?? meta.height}`);
+  return pages > 1;
 }
 
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
+  for (const name of await readdir(OUT_DIR)) {
+    if (name.endsWith('.webp') || name.endsWith('.gif') || name.startsWith('_')) {
+      await rm(join(OUT_DIR, name), { force: true });
+    }
+  }
   const existing = new Set(await readdir(SRC_DIR));
   let n = 0;
   for (const id of OPERATORS) {
@@ -163,7 +162,8 @@ async function main() {
     }
     if (await bakeOne(id)) n++;
   }
-  console.log(`done: ${n}/${OPERATORS.length} animated portraits → ${OUT_DIR}`);
+  console.log(`done: ${n}/${OPERATORS.length} animated GIFs → ${OUT_DIR}`);
+  if (n < OPERATORS.length) process.exitCode = 1;
 }
 
 main().catch((err) => {

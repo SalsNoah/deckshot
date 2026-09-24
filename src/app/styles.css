@@ -603,28 +603,6 @@ input { font: inherit; }
   background: linear-gradient(160deg, color-mix(in srgb, var(--role, #2ee6d6) 35%, #0b0f15), #0b0f15);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--role, #2ee6d6) 45%, transparent);
 }
-/* Baked hair-flow strip (public/portraits/anim/*.webp) played with stepped frames. */
-.portrait-anim {
-  flex: none;
-  background-repeat: no-repeat;
-  background-position: 0 0;
-  background-size: 100% calc(var(--anim-frames, 12) * 100%);
-  animation: portraitSheet var(--anim-dur, 0.84s) steps(var(--anim-frames, 12)) infinite;
-}
-@keyframes portraitSheet {
-  to { background-position: 0 100%; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .portrait-anim { animation: none; }
-}
-.hcard-art .portrait-anim,
-.cdetail-hero .portrait-anim,
-.unit-portrait .portrait-anim {
-  width: 100% !important;
-  height: 100% !important;
-  border-radius: 0;
-  box-shadow: none;
-}
 .portrait-fallback {
   display: grid;
   place-items: center;

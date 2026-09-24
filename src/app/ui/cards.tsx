@@ -27,9 +27,9 @@ function cardArtSrc(id: string): string {
   return publicAsset(`portraits/${id}.webp`);
 }
 
-/** Pre-baked hair-flow loop (see `npm run portraits:anim`). */
+/** Pre-baked hair-flow loop GIF (see `npm run portraits:anim`). */
 function cardAnimSrc(id: string): string {
-  return publicAsset(`portraits/anim/${id}.webp`);
+  return publicAsset(`portraits/anim/${id}.gif`);
 }
 
 export function hasCardArt(cardId: string): boolean {
@@ -40,34 +40,18 @@ export function hasPortraitAnim(cardId: string): boolean {
   return OPERATOR_ANIM_IDS.has(cardId);
 }
 
-/** Neon card portrait. Animation-rare swaps the still for a baked frame-strip loop. */
+/** Neon card portrait. Animation-rare swaps the still for a looping GIF. */
 export function Portrait({ cardId, size = 56, flow }: { cardId: string; size?: number; flow?: boolean }) {
   const def = card(cardId);
   const accent = cardColor(cardId);
   const useAnim = Boolean(flow && hasPortraitAnim(cardId));
-  if (useAnim) {
-    const frames = 12;
-    return (
-      <div
-        className="portrait portrait-anim"
-        role="img"
-        aria-label={def.en}
-        style={{
-          width: size,
-          height: size,
-          '--role': accent,
-          backgroundImage: `url("${cardAnimSrc(cardId)}")`,
-          '--anim-frames': frames,
-          '--anim-dur': `${frames * 0.07}s`,
-        } as CSSProperties}
-      />
-    );
-  }
-  const src = hasCardArt(cardId) ? cardArtSrc(cardId) : undefined;
+  const src = hasCardArt(cardId)
+    ? (useAnim ? cardAnimSrc(cardId) : cardArtSrc(cardId))
+    : undefined;
   if (src) {
     return (
       <img
-        className="portrait"
+        className={`portrait${useAnim ? ' portrait-anim' : ''}`}
         src={src}
         alt={def.en}
         width={size}
