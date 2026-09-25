@@ -1,8 +1,10 @@
 /**
  * Character cut-out masks for operator portraits (BiRefNet-lite via onnxruntime).
- * Masks are cached in `scripts/.cache/masks/<id>.png` (0 = background, 255 = character).
+ * Masks are cached in `scripts/.cache/masks/<id>-<hash>.png` (0 = background, 255 = character),
+ * keyed by the still's content so a redrawn portrait never reuses the old silhouette.
  */
-import { mkdir, stat, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import * as ort from 'onnxruntime-node';
 import sharp from 'sharp';
@@ -74,9 +76,16 @@ async function segment(srcPath: string): Promise<Buffer> {
 
 /** Character alpha (0–1) at `size`×`size`, cropped like the portrait (`cover`, top). */
 export async function portraitMask(id: string, srcPath: string, size: number): Promise<Float32Array> {
-  const cached = join(MASK_DIR, `${id}.png`);
+  const hash = createHash('sha1').update(await readFile(srcPath)).digest('hex').slice(0, 12);
+  const name = `${id}-${hash}.png`;
+  const cached = join(MASK_DIR, name);
   if (!(await exists(cached))) {
     await mkdir(MASK_DIR, { recursive: true });
+    for (const f of await readdir(MASK_DIR)) {
+      if (f !== name && (f === `${id}.png` || new RegExp(`^${id}-[0-9a-f]{12}\\.png$`).test(f))) {
+        await unlink(join(MASK_DIR, f));
+      }
+    }
     const meta = await sharp(srcPath).metadata();
     const raw = await segment(srcPath);
     await sharp(raw, { raw: { width: NET, height: NET, channels: 1 } })
