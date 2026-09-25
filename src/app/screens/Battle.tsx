@@ -1,4 +1,4 @@
-import { Bomb, CircleHelp, Coins, Flag, Flame, MessageCircle, Radiation, Skull, X } from 'lucide-react';
+import { Bomb, ChevronRight, CircleHelp, Coins, Flag, Flame, Home, MessageCircle, Radiation, Skull, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import {
   card, checkPlan, comebackBonus, deckById, legalTargets, NUKE_BLOCK_ZONES, RESUPPLY_COST, STREAK_ORDER, STREAKS,
@@ -1084,7 +1084,11 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, flowOwned }: {
         <div className="modal-bg">
           <div className="modal">
             <h3>相手が切断しました</h3>
-            <button className="btn primary" onClick={onExit}>タイトルへ</button>
+            <button className="hud-btn hud-main hud-primary" style={{ '--a': '#ff4655' } as CSSProperties} onClick={onExit}>
+              <span className="hud-ico"><Home size={22} /></span>
+              <span className="hud-txt"><b>TITLE</b><small>タイトルへ</small></span>
+              <ChevronRight className="hud-go" size={22} />
+            </button>
           </div>
         </div>
       )}
@@ -1142,8 +1146,18 @@ function ResultOverlay({ result, oppName, onRematch, onExit, canRematch }: {
           <div className={`result-rp ${result.rp > 0 ? 'up' : result.rp < 0 ? 'down' : ''}`}>{result.rp > 0 ? '+' : ''}{result.rp} RP</div>
         )}
         <div className="result-btns">
-          {canRematch && <button className="btn primary" onClick={onRematch}>もう一戦</button>}
-          <button className="btn ghost" onClick={onExit}>タイトルへ</button>
+          {canRematch && (
+            <button className="hud-btn hud-main hud-primary" style={{ '--a': '#ff4655' } as CSSProperties} onClick={onRematch}>
+              <span className="hud-ico"><Flame size={22} /></span>
+              <span className="hud-txt"><b>REMATCH</b><small>もう一戦</small></span>
+              <ChevronRight className="hud-go" size={22} />
+            </button>
+          )}
+          <button className="hud-btn hud-main" style={{ '--a': '#2ee6d6' } as CSSProperties} onClick={onExit}>
+            <span className="hud-ico"><Home size={22} /></span>
+            <span className="hud-txt"><b>TITLE</b><small>タイトルへ</small></span>
+            <ChevronRight className="hud-go" size={22} />
+          </button>
         </div>
       </div>
     </div>

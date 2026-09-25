@@ -50,7 +50,9 @@ export type Ability =
   | { k: 'scavenge' }
   | { k: 'mimic' }
   | { k: 'berserk'; n: number }
-  | { k: 'bleed'; n: number };
+  | { k: 'bleed'; n: number }
+  /** Same-zone partner buff. `with` is a card id. */
+  | { k: 'bond'; with: string; atk?: number; aim?: number };
 
 export type TargetKind = 'zone' | 'enemyUnit' | 'allyUnit' | 'none';
 

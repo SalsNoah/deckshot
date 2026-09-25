@@ -1,3 +1,4 @@
+import { Check, ChevronRight, Dices } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import { card, type Rarity } from '../../engine';
 import { sfx, vibrate } from '../sfx';
@@ -209,8 +210,18 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
         )}
         {phase === 'reveal' && allOpen && (
           <div className="pack-actions">
-            {onAgain && <button className="btn primary" onClick={onAgain}>{againLabel ?? 'もう一度引く'}</button>}
-            <button className="btn" onClick={onClose}>OK</button>
+            {onAgain && (
+              <button className="hud-btn hud-main hud-primary" style={{ '--a': '#ff4655' } as CSSProperties} onClick={onAgain}>
+                <span className="hud-ico"><Dices size={22} /></span>
+                <span className="hud-txt"><b>AGAIN</b><small>{againLabel ?? 'もう一度引く'}</small></span>
+                <ChevronRight className="hud-go" size={22} />
+              </button>
+            )}
+            <button className="hud-btn hud-main" style={{ '--a': '#2ee6d6' } as CSSProperties} onClick={onClose}>
+              <span className="hud-ico"><Check size={22} /></span>
+              <span className="hud-txt"><b>CONFIRM</b><small>OK</small></span>
+              <ChevronRight className="hud-go" size={22} />
+            </button>
           </div>
         )}
       </div>

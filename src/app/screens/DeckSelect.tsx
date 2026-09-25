@@ -1,3 +1,4 @@
+import { ChevronRight, Crosshair, Pencil } from 'lucide-react';
 import { useState, type CSSProperties } from 'react';
 import { DECK_SIZE, card, countCards, validateDeck, type Difficulty } from '../../engine';
 import type { Profile } from '../profile';
@@ -31,13 +32,15 @@ export function DeckSelect({ mode, profile, difficulty, onChange, onStart, onBac
         <h2>{mode === 'cpu' ? 'CPU対戦' : 'オンライン対戦'}</h2>
       </div>
 
-      <div className="deck-detail" style={{ '--c': '#2ee6d6' } as CSSProperties}>
+      <div className="deck-detail" style={{ '--a': '#2ee6d6', '--c': '#2ee6d6' } as CSSProperties}>
         <div className="deck-detail-head">
           <div>
             <div className="deck-en">CUSTOM</div>
             <div className="deck-name">マイデッキ<span>{profile.deck.length}/{DECK_SIZE}枚・所持カードのみ</span></div>
           </div>
-          <button className="btn small" onClick={onEdit}>編成する</button>
+          <button className="btn small" style={{ '--a': '#2ee6d6' } as CSSProperties} onClick={onEdit}>
+            <Pencil size={14} /> 編成する
+          </button>
         </div>
         {!validation.ok && (
           <p className="deck-error">{validation.errors[0] ?? 'デッキを編成してください'}</p>
@@ -57,7 +60,12 @@ export function DeckSelect({ mode, profile, difficulty, onChange, onStart, onBac
       {mode === 'cpu' && (
         <div className="diff-list">
           {DIFFS.map((d) => (
-            <button key={d.id} className={`diff ${d.id === difficulty ? 'selected' : ''}`} onClick={() => onChange({ difficulty: d.id })}>
+            <button
+              key={d.id}
+              className={`diff ${d.id === difficulty ? 'selected' : ''}`}
+              style={{ '--a': d.id === difficulty ? '#ff4655' : '#c7d2de' } as CSSProperties}
+              onClick={() => onChange({ difficulty: d.id })}
+            >
               <b>{d.name}</b>
               <span>{d.desc}</span>
             </button>
@@ -65,8 +73,18 @@ export function DeckSelect({ mode, profile, difficulty, onChange, onStart, onBac
         </div>
       )}
 
-      <button className="btn primary big" disabled={!validation.ok} onClick={onStart}>
-        {mode === 'cpu' ? '出撃！' : 'このデッキで次へ'}
+      <button
+        className="hud-btn hud-main hud-primary"
+        style={{ '--a': '#ff4655' } as CSSProperties}
+        disabled={!validation.ok}
+        onClick={onStart}
+      >
+        <span className="hud-ico"><Crosshair size={22} /></span>
+        <span className="hud-txt">
+          <b>{mode === 'cpu' ? 'DEPLOY' : 'CONTINUE'}</b>
+          <small>{mode === 'cpu' ? '出撃！' : 'このデッキで次へ'}</small>
+        </span>
+        <ChevronRight className="hud-go" size={22} />
       </button>
 
       {peek && (

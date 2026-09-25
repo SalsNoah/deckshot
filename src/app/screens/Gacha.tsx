@@ -1,4 +1,4 @@
-import { Dices, Ticket } from 'lucide-react';
+import { ChevronRight, Dices, Gift, Layers, Ticket } from 'lucide-react';
 import { useState, type CSSProperties } from 'react';
 import {
   canFreeGacha, freeGachaDate, GACHA_MULTI_PACKS, GACHA_MULTI_TICKETS, GACHA_PULL_SIZE,
@@ -109,19 +109,36 @@ export function Gacha({ profile, onChange, onBack }: {
         <span className={free ? 'ok' : 'off'}>{free ? '本日の無料ガチャ：残り1回' : '本日の無料ガチャ：使用済'}</span>
       </div>
 
-      <div className="gacha-actions">
-        <button className="btn primary big" disabled={!free} onClick={() => runPull('free')}>
-          無料で{GACHA_PULL_SIZE}枚引く
-        </button>
-        <button className="btn big" disabled={profile.gachaTickets < 1} onClick={() => runPull('ticket')}>
-          1回引く（チケット×1・残り {profile.gachaTickets}）
+      <div className="gacha-actions menu">
+        <button
+          className="hud-btn hud-main hud-primary"
+          style={{ '--a': '#ff4655' } as CSSProperties}
+          disabled={!free}
+          onClick={() => runPull('free')}
+        >
+          <span className="hud-ico"><Gift size={22} /></span>
+          <span className="hud-txt"><b>FREE DROP</b><small>無料で{GACHA_PULL_SIZE}枚引く</small></span>
+          <ChevronRight className="hud-go" size={22} />
         </button>
         <button
-          className="btn big gacha-multi"
+          className="hud-btn hud-main"
+          style={{ '--a': '#2ee6d6' } as CSSProperties}
+          disabled={profile.gachaTickets < 1}
+          onClick={() => runPull('ticket')}
+        >
+          <span className="hud-ico"><Ticket size={22} /></span>
+          <span className="hud-txt"><b>SINGLE</b><small>1回引く（チケット×1・残り {profile.gachaTickets}）</small></span>
+          <ChevronRight className="hud-go" size={22} />
+        </button>
+        <button
+          className="hud-btn hud-main gacha-multi"
+          style={{ '--a': '#ffb547' } as CSSProperties}
           disabled={profile.gachaTickets < GACHA_MULTI_TICKETS}
           onClick={() => runPull('multi')}
         >
-          10連ガチャ（チケット×{GACHA_MULTI_TICKETS}・{GACHA_PULL_SIZE * GACHA_MULTI_PACKS}枚）
+          <span className="hud-ico"><Layers size={22} /></span>
+          <span className="hud-txt"><b>10-PULL</b><small>チケット×{GACHA_MULTI_TICKETS}・{GACHA_PULL_SIZE * GACHA_MULTI_PACKS}枚</small></span>
+          <ChevronRight className="hud-go" size={22} />
         </button>
       </div>
 
@@ -130,7 +147,7 @@ export function Gacha({ profile, onChange, onBack }: {
         <p className="gacha-shop-note">チケットを使うと無料枠とは別に何度でも引けます。購入はデモ動作です。</p>
         <div className="ticket-packs">
           {TICKET_PACKS.map((p) => (
-            <button key={p.id} className="ticket-pack" onClick={() => buyTickets(p.tickets, p.label)}>
+            <button key={p.id} className="ticket-pack" style={{ '--a': '#ffb547' } as CSSProperties} onClick={() => buyTickets(p.tickets, p.label)}>
               <b>{p.label}</b>
               <span>{p.priceLabel}</span>
             </button>

@@ -25,6 +25,7 @@ export const KEYWORD_TEXT: Record<string, { name: string; text: string }> = {
   mimic: { name: '擬態', text: '配置時、同じゾーンで最もATKが高い敵のステータスをコピーする。' },
   berserk: { name: '狂化', text: 'ダメージを受けるたびATKが上がる。' },
   bleed: { name: '出血', text: 'ターン終了時、自身にダメージを受ける。' },
+  bond: { name: '絆', text: '指定のオペレーターと同じゾーンにいるとき、自身が強化される。' },
 };
 
 export function cardKeywords(cardId: string): { name: string; text: string }[] {

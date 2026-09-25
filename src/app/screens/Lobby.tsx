@@ -1,4 +1,4 @@
-import { Copy, Users, Zap } from 'lucide-react';
+import { ChevronRight, Copy, Users, Zap } from 'lucide-react';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { defaultServerUrl, OnlineClient, type LobbyStatus, type OnlineMatch } from '../online';
 import { cssUrl } from '../ui/assets';
@@ -62,11 +62,25 @@ export function Lobby({ name, deck, onStart, onBack }: {
         <button className="btn ghost" onClick={() => clientRef.current?.cancel()}>キャンセル</button>
       ) : (
         <div className="menu">
-          <button className="btn primary big" disabled={!connected} onClick={() => clientRef.current?.quick()}>
-            <Zap size={18} /> ランダムマッチ
+          <button
+            className="hud-btn hud-main hud-primary"
+            style={{ '--a': '#ff4655' } as CSSProperties}
+            disabled={!connected}
+            onClick={() => clientRef.current?.quick()}
+          >
+            <span className="hud-ico"><Zap size={22} /></span>
+            <span className="hud-txt"><b>QUICK MATCH</b><small>ランダムマッチ</small></span>
+            <ChevronRight className="hud-go" size={22} />
           </button>
-          <button className="btn big" disabled={!connected} onClick={() => clientRef.current?.create()}>
-            <Users size={18} /> ルームを作る
+          <button
+            className="hud-btn hud-main"
+            style={{ '--a': '#2ee6d6' } as CSSProperties}
+            disabled={!connected}
+            onClick={() => clientRef.current?.create()}
+          >
+            <span className="hud-ico"><Users size={22} /></span>
+            <span className="hud-txt"><b>CREATE ROOM</b><small>ルームを作る</small></span>
+            <ChevronRight className="hud-go" size={22} />
           </button>
           <div className="join-row">
             <input

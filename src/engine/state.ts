@@ -165,6 +165,16 @@ export function operatorCost(cardId: string, modId: string): number {
 
 type Board = { turn: number; zones: ZoneState[] };
 
+function bondStat(u: Unit, allies: Unit[], stat: 'atk' | 'aim'): number {
+  let n = 0;
+  for (const a of abilitiesOf(u)) {
+    if (a.k !== 'bond') continue;
+    if (!allies.some((x) => x.cardId === a.with && x.hp > 0)) continue;
+    n += (stat === 'atk' ? a.atk : a.aim) ?? 0;
+  }
+  return n;
+}
+
 export function effAtk(g: Board, u: Unit): number {
   let v = u.atk + u.tmpAtk;
   if (u.weapon) v += card(u.weapon).mods?.atk ?? 0;
@@ -174,6 +184,7 @@ export function effAtk(g: Board, u: Unit): number {
   const allies = g.zones[u.zone].units[u.owner].filter((a) => a.uid !== u.uid && a.hp > 0);
   if (hasAbility(u, 'lonely') && allies.length === 0) v += abilityN(u, 'lonely') || 3;
   if (hasAbility(u, 'crowd')) v += allies.length;
+  v += bondStat(u, allies, 'atk');
   return Math.max(0, v);
 }
 
@@ -184,8 +195,10 @@ export function effAim(g: Board, u: Unit): number {
   if (u.weapon) v += card(u.weapon).mods?.aim ?? 0;
   if (u.armor) v += card(u.armor).mods?.aim ?? 0;
   if (hasAbility(u, 'flank') && u.deployedTurn === g.turn) v += 3;
-  for (const ally of zone.units[u.owner]) {
-    if (ally.uid !== u.uid && ally.hp > 0) v += abilityN(ally, 'leader');
+  const allies = zone.units[u.owner].filter((a) => a.uid !== u.uid && a.hp > 0);
+  v += bondStat(u, allies, 'aim');
+  for (const ally of allies) {
+    v += abilityN(ally, 'leader');
   }
   for (const enemy of zone.units[u.owner === 0 ? 1 : 0]) {
     if (enemy.hp > 0) v -= abilityN(enemy, 'suppress');

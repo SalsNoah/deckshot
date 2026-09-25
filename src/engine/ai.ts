@@ -49,6 +49,7 @@ function unitValue(g: GameState, u: Unit): number {
       case 'eco': v += 2 * a.n; break;
       case 'leader': case 'suppress': v += 1; break;
       case 'trap': v += 1; break;
+      case 'bond': v += 1.2; break;
       default: break;
     }
   }

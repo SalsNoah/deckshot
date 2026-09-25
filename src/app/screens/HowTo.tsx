@@ -1,4 +1,4 @@
-import { Bomb, Coins, Crosshair, Flag, Hand, Radiation, Target } from 'lucide-react';
+import { Bomb, Check, ChevronRight, Coins, Crosshair, Flag, Hand, Radiation, Target } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { cssUrl } from '../ui/assets';
 import { KEYWORD_TEXT } from '../ui/text';
@@ -81,7 +81,11 @@ export function HowTo({ onBack }: { onBack: () => void }) {
         <h2>遊び方</h2>
       </div>
       <HowToContent />
-      <button className="btn primary" onClick={onBack}>わかった！</button>
+      <button className="hud-btn hud-main hud-primary" style={{ '--a': '#ff4655' } as CSSProperties} onClick={onBack}>
+        <span className="hud-ico"><Check size={22} /></span>
+        <span className="hud-txt"><b>GOT IT</b><small>わかった！</small></span>
+        <ChevronRight className="hud-go" size={22} />
+      </button>
     </div>
   );
 }

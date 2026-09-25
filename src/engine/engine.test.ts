@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  activateUav, baseIncome, card, checkPlan, createGame, DECKS, effAtk, findUnit, planAI, resolveTurn, RESUPPLY_COST,
+  activateUav, baseIncome, card, checkPlan, createGame, DECKS, effAim, effAtk, findUnit, planAI, resolveTurn, RESUPPLY_COST,
   validateDeck, viewFor,
   type GameEvent, type GameState, type Plan, type PlayerId, type Unit, type ZoneId,
 } from './index';
@@ -429,6 +429,19 @@ describe('extreme abilities', () => {
     spawn(g, 0, 'rookie', 1);
     expect(effAtk(g, lone)).toBe(5); // 2+3
     expect(effAtk(g, pack)).toBe(3); // 1+2 allies
+  });
+
+  it('bond buffs ATK/AIM only when the partner is in the same zone', () => {
+    const g = setup();
+    const ember = spawn(g, 0, 'ember', 0);
+    expect(effAtk(g, ember)).toBe(2);
+    const frost = spawn(g, 0, 'frost', 0);
+    expect(effAtk(g, ember)).toBe(4); // +2 from bond
+    expect(effAim(g, frost)).toBe(7); // 4+3 bond
+    // Different zone → no bond
+    const fang = spawn(g, 0, 'fang', 1);
+    spawn(g, 0, 'claw', 2);
+    expect(effAtk(g, fang)).toBe(2);
   });
 
   it('mimic copies the highest-ATK enemy on deploy', () => {

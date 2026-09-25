@@ -10,6 +10,9 @@ const CARD_ART_IDS = [
   'rookie', 'scout', 'jolt', 'bulwark', 'haze', 'wire', 'kingpin', 'blitz', 'breacher', 'ghost',
   'angel', 'banshee', 'hawk', 'reaper', 'vanguard', 'titan', 'ace', 'deadeye',
   'shard', 'anchor', 'mimic', 'widow', 'leech', 'blast', 'martyr', 'phoenix', 'pack', 'lonewolf', 'scav', 'spark',
+  'pup', 'bit', 'lace', 'mochi', 'chirp', 'nibble', 'silk', 'bean',
+  'ember', 'frost', 'lock', 'key', 'nova', 'orbit', 'fang', 'claw', 'volt', 'amp',
+  'chum', 'dot',
   // gear
   'smg', 'knife', 'vest', 'ar', 'shotgun', 'heavyarmor', 'sniper', 'lmg',
   'railgun', 'hexscope', 'banerounds', 'bombvest',
@@ -21,6 +24,9 @@ const OPERATOR_ANIM_IDS = [
   'rookie', 'scout', 'jolt', 'bulwark', 'haze', 'wire', 'kingpin', 'blitz', 'breacher', 'ghost',
   'angel', 'banshee', 'hawk', 'reaper', 'vanguard', 'titan', 'ace', 'deadeye',
   'shard', 'anchor', 'mimic', 'widow', 'leech', 'blast', 'martyr', 'phoenix', 'pack', 'lonewolf', 'scav', 'spark',
+  'pup', 'bit', 'lace', 'mochi', 'chirp', 'nibble', 'silk', 'bean',
+  'ember', 'frost', 'lock', 'key', 'nova', 'orbit', 'fang', 'claw', 'volt', 'amp',
+  'chum', 'dot',
 ] as const;
 
 const OPERATOR_ANIM_SET = new Set<string>(OPERATOR_ANIM_IDS);

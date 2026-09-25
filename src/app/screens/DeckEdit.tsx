@@ -1,3 +1,4 @@
+import { Check, ChevronRight } from 'lucide-react';
 import { useMemo, useState, type CSSProperties } from 'react';
 import {
   ALL_CARDS, DECK_SIZE, DECKS, MAX_COPIES, card, countCards, validateDeck, type CardType,
@@ -159,8 +160,15 @@ export function DeckEdit({ profile, onChange, onBack }: {
         })}
       </div>
 
-      <button className="btn primary big sticky-save" disabled={!validation.ok} onClick={save}>
-        このデッキを保存（{draft.length}/{DECK_SIZE}）
+      <button
+        className="hud-btn hud-main hud-primary sticky-save"
+        style={{ '--a': '#ff4655' } as CSSProperties}
+        disabled={!validation.ok}
+        onClick={save}
+      >
+        <span className="hud-ico"><Check size={22} /></span>
+        <span className="hud-txt"><b>SAVE DECK</b><small>このデッキを保存（{draft.length}/{DECK_SIZE}）</small></span>
+        <ChevronRight className="hud-go" size={22} />
       </button>
 
       {toast && <div className="toast">{toast}</div>}

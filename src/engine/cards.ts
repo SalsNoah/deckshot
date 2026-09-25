@@ -150,6 +150,112 @@ const operators: CardDef[] = [
     atk: 5, hp: 2, aim: 7, abilities: [{ k: 'ephemeral' }],
     text: '【消滅】ターン終了時に破壊される。', flavor: '一瞬の閃光。',
   },
+
+  // ── Cute motif (8) ──
+  {
+    id: 'pup', name: 'パップ', en: 'PUP', type: 'operator', cost: 2, rarity: 'common', role: 'assault',
+    atk: 2, hp: 3, aim: 5, abilities: [{ k: 'flank' }],
+    text: '【裏取り】配置したターンAIM+3、ガードを無視。', flavor: 'ワン！ …じゃなくて、突入！',
+  },
+  {
+    id: 'bit', name: 'ビット', en: 'BIT', type: 'operator', cost: 1, rarity: 'common', role: 'support',
+    atk: 1, hp: 2, aim: 5, abilities: [{ k: 'onDeploy', effect: { kind: 'draw', amount: 1 } }],
+    text: '配置時：カードを1枚引く。', flavor: 'ボク、見つけたよ！',
+  },
+  {
+    id: 'lace', name: 'レース', en: 'LACE', type: 'operator', cost: 2, rarity: 'common', role: 'support',
+    atk: 1, hp: 3, aim: 3, abilities: [{ k: 'medic', n: 1 }],
+    text: '【メディック1】ターン終了時、このゾーンの味方全員のHPを1回復。', flavor: '痛いの痛いの飛んでけ〜。',
+  },
+  {
+    id: 'mochi', name: 'モチ', en: 'MOCHI', type: 'operator', cost: 2, rarity: 'common', role: 'tank',
+    atk: 1, hp: 5, aim: 2, abilities: [{ k: 'guard' }],
+    text: '【ガード】', flavor: 'ぷにぷにでも盾は盾。',
+  },
+  {
+    id: 'chirp', name: 'チャープ', en: 'CHIRP', type: 'operator', cost: 2, rarity: 'rare', role: 'assault',
+    atk: 1, hp: 2, aim: 6, abilities: [{ k: 'stealth' }],
+    text: '【ステルス】配置したターンは射撃の対象にならない。', flavor: 'ちゅん、って消えた。',
+  },
+  {
+    id: 'nibble', name: 'ニブル', en: 'NIBBLE', type: 'operator', cost: 2, rarity: 'common', role: 'support',
+    atk: 1, hp: 3, aim: 3, abilities: [{ k: 'trap', n: 1 }],
+    text: '【トラップ1】このゾーンに敵が配置・移動してきたら、その敵に1ダメージ。', flavor: 'かじったら痛いよ？',
+  },
+  {
+    id: 'silk', name: 'シルク', en: 'SILK', type: 'operator', cost: 3, rarity: 'rare', role: 'sniper',
+    atk: 2, hp: 2, aim: 4, abilities: [{ k: 'snipe' }],
+    text: '【狙撃】', flavor: 'ふわふわ照準、ぴたり。',
+  },
+  {
+    id: 'bean', name: 'ビーン', en: 'BEAN', type: 'operator', cost: 2, rarity: 'rare', role: 'assault',
+    atk: 2, hp: 2, aim: 5, abilities: [{ k: 'crowd' }],
+    text: '【群れ】同じゾーンの他の味方1体につきATK+1。', flavor: 'ちびっ子部隊、集合！',
+  },
+
+  // ── Partner bonds (10 = 5 pairs) ──
+  {
+    id: 'ember', name: 'エンバー', en: 'EMBER', type: 'operator', cost: 3, rarity: 'rare', role: 'assault',
+    atk: 2, hp: 3, aim: 4, abilities: [{ k: 'bond', with: 'frost', atk: 2 }],
+    text: '【絆：フロスト】同じゾーンにいるときATK+2。', flavor: '冷たい奴とだと燃える。',
+  },
+  {
+    id: 'frost', name: 'フロスト', en: 'FROST', type: 'operator', cost: 3, rarity: 'rare', role: 'sniper',
+    atk: 2, hp: 3, aim: 4, abilities: [{ k: 'bond', with: 'ember', aim: 3 }, { k: 'snipe' }],
+    text: '【狙撃】【絆：エンバー】同じゾーンにいるときAIM+3。', flavor: '熱がなければ、狙いは定まる。',
+  },
+  {
+    id: 'lock', name: 'ロック', en: 'LOCK', type: 'operator', cost: 3, rarity: 'rare', role: 'tank',
+    atk: 1, hp: 5, aim: 2, abilities: [{ k: 'guard' }, { k: 'bond', with: 'key', atk: 1, aim: 2 }],
+    text: '【ガード】【絆：キー】同じゾーンにいるときATK+1・AIM+2。', flavor: '鍵が来ないと、ただの壁だ。',
+  },
+  {
+    id: 'key', name: 'キー', en: 'KEY', type: 'operator', cost: 3, rarity: 'rare', role: 'assault',
+    atk: 2, hp: 3, aim: 5, abilities: [{ k: 'flank' }, { k: 'bond', with: 'lock', atk: 2 }],
+    text: '【裏取り】【絆：ロック】同じゾーンにいるときATK+2。', flavor: '鍵穴を開けたら、突っ込むだけ。',
+  },
+  {
+    id: 'nova', name: 'ノヴァ', en: 'NOVA', type: 'operator', cost: 4, rarity: 'epic', role: 'assault',
+    atk: 3, hp: 3, aim: 5, abilities: [{ k: 'bond', with: 'orbit', atk: 2, aim: 1 }],
+    text: '【絆：オービット】同じゾーンにいるときATK+2・AIM+1。', flavor: '衛星が回りだしたら、爆発だ。',
+  },
+  {
+    id: 'orbit', name: 'オービット', en: 'ORBIT', type: 'operator', cost: 3, rarity: 'epic', role: 'support',
+    atk: 1, hp: 4, aim: 4, abilities: [{ k: 'leader', n: 1 }, { k: 'bond', with: 'nova', aim: 2 }],
+    text: '【指揮1】【絆：ノヴァ】同じゾーンにいるときAIM+2。', flavor: '恒星のそばが、一番安定する。',
+  },
+  {
+    id: 'fang', name: 'ファング', en: 'FANG', type: 'operator', cost: 3, rarity: 'rare', role: 'assault',
+    atk: 2, hp: 3, aim: 5, abilities: [{ k: 'bond', with: 'claw', atk: 1, aim: 1 }],
+    text: '【絆：クロウ】同じゾーンにいるときATK+1・AIM+1。', flavor: '牙だけでは足りない。爪が要る。',
+  },
+  {
+    id: 'claw', name: 'クロウ', en: 'CLAW', type: 'operator', cost: 3, rarity: 'rare', role: 'assault',
+    atk: 2, hp: 3, aim: 5, abilities: [{ k: 'bond', with: 'fang', atk: 1, aim: 1 }],
+    text: '【絆：ファング】同じゾーンにいるときATK+1・AIM+1。', flavor: '爪だけでは足りない。牙が要る。',
+  },
+  {
+    id: 'volt', name: 'ボルト', en: 'VOLT', type: 'operator', cost: 4, rarity: 'epic', role: 'assault',
+    atk: 3, hp: 3, aim: 6, abilities: [{ k: 'bond', with: 'amp', atk: 3 }],
+    text: '【絆：アンプ】同じゾーンにいるときATK+3。', flavor: '増幅器なしでは、ただの静電気。',
+  },
+  {
+    id: 'amp', name: 'アンプ', en: 'AMP', type: 'operator', cost: 3, rarity: 'epic', role: 'support',
+    atk: 1, hp: 4, aim: 3, abilities: [{ k: 'suppress', n: 1 }, { k: 'bond', with: 'volt', aim: 2 }],
+    text: '【制圧1】【絆：ボルト】同じゾーンにいるときAIM+2。', flavor: '電流が来て、初めて意味がある。',
+  },
+
+  // ── Weak mascots (2) ──
+  {
+    id: 'chum', name: 'チャム', en: 'CHUM', type: 'operator', cost: 1, rarity: 'common', role: 'support',
+    atk: 0, hp: 1, aim: 1,
+    text: 'ATK0 / HP1 / AIM1。戦力外マスコット。', flavor: 'い、いい子でいるから撃たないで…！',
+  },
+  {
+    id: 'dot', name: 'ドット', en: 'DOT', type: 'operator', cost: 1, rarity: 'common', role: 'assault',
+    atk: 1, hp: 1, aim: 1,
+    text: 'ATK1 / HP1 / AIM1。点のような存在感。', flavor: 'ぴっ。',
+  },
 ];
 
 const gear: CardDef[] = [

@@ -21,6 +21,9 @@ const OPERATORS = [
   'rookie', 'scout', 'jolt', 'bulwark', 'haze', 'wire', 'kingpin', 'blitz', 'breacher', 'ghost',
   'angel', 'banshee', 'hawk', 'reaper', 'vanguard', 'titan', 'ace', 'deadeye',
   'shard', 'anchor', 'mimic', 'widow', 'leech', 'blast', 'martyr', 'phoenix', 'pack', 'lonewolf', 'scav', 'spark',
+  'pup', 'bit', 'lace', 'mochi', 'chirp', 'nibble', 'silk', 'bean',
+  'ember', 'frost', 'lock', 'key', 'nova', 'orbit', 'fang', 'claw', 'volt', 'amp',
+  'chum', 'dot',
 ] as const;
 type OperatorId = (typeof OPERATORS)[number];
 
