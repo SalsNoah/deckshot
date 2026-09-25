@@ -35,9 +35,12 @@ function cardArtSrc(id: string): string {
   return publicAsset(`portraits/${id}.webp`);
 }
 
+/** Portraits drawn at or below this CSS size use the 256px loop; larger ones use 512px. */
+const ANIM_SMALL_MAX = 160;
+
 /** Pre-baked looping animated WebP (see `npm run portraits:anim`). */
-function cardAnimSrc(id: string): string {
-  return publicAsset(`portraits/anim/${id}.webp`);
+function cardAnimSrc(id: string, size: number): string {
+  return publicAsset(size <= ANIM_SMALL_MAX ? `portraits/anim/sm/${id}.webp` : `portraits/anim/${id}.webp`);
 }
 
 export function hasCardArt(cardId: string): boolean {
@@ -69,7 +72,7 @@ export function Portrait({ cardId, size = 56, flow }: { cardId: string; size?: n
   const accent = cardColor(cardId);
   const wantAnim = Boolean(flow && hasPortraitAnim(cardId));
   const still = hasCardArt(cardId) ? cardArtSrc(cardId) : undefined;
-  const anim = wantAnim ? cardAnimSrc(cardId) : undefined;
+  const anim = wantAnim ? cardAnimSrc(cardId, size) : undefined;
   const [src, setSrc] = useState<string | undefined>(anim ?? still);
 
   useEffect(() => {
@@ -84,6 +87,7 @@ export function Portrait({ cardId, size = 56, flow }: { cardId: string; size?: n
         alt={def.en}
         width={size}
         height={size}
+        decoding="async"
         draggable={false}
         onError={() => {
           if (still && src !== still) setSrc(still);
@@ -119,7 +123,7 @@ export function StatRow({ atk, hp, aim, base, size = 'sm' }: {
   );
 }
 
-export function HandCard({ cardId, cost, selected, disabled, used, kira, flow, onClick }: {
+export function HandCard({ cardId, cost, selected, disabled, used, kira, flow, artSize = 140, onClick }: {
   cardId: string;
   cost: number;
   selected?: boolean;
@@ -129,6 +133,8 @@ export function HandCard({ cardId, cost, selected, disabled, used, kira, flow, o
   kira?: boolean;
   /** Portrait motion animation (rare gacha cosmetic). */
   flow?: boolean;
+  /** Rendered portrait size; picks the motion loop resolution. */
+  artSize?: number;
   onClick?: MouseEventHandler;
 }) {
   const def = card(cardId);
@@ -141,7 +147,7 @@ export function HandCard({ cardId, cost, selected, disabled, used, kira, flow, o
       onClick={onClick}
     >
       <div className="hcard-art" aria-hidden>
-        {art ? <Portrait cardId={cardId} size={140} flow={flow} /> : <CardIcon cardId={cardId} size={36} />}
+        {art ? <Portrait cardId={cardId} size={artSize} flow={flow} /> : <CardIcon cardId={cardId} size={36} />}
       </div>
       <div className="hcard-shade" aria-hidden />
       {kira && <div className="hcard-kira-foil" aria-hidden />}

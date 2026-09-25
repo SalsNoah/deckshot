@@ -231,7 +231,7 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
           <div className="pack-spot-rays" />
           <div className="pack-spot-flash" />
           <div className="pack-spot-card">
-            <HandCard cardId={cards[spotlight]} cost={card(cards[spotlight]).cost} kira={kira[spotlight]} flow={flow[spotlight]} />
+            <HandCard cardId={cards[spotlight]} cost={card(cards[spotlight]).cost} kira={kira[spotlight]} flow={flow[spotlight]} artSize={260} />
           </div>
           <div className="pack-spot-title">
             <b>LEGEND</b>

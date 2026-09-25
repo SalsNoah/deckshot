@@ -31,7 +31,12 @@ const S = 1024;
 const N = S * S;
 const FRAMES = 48;
 const DELAY_MS = 80;
-const QUALITY = 76;
+
+/** Rendered at S, then shipped downscaled: animated WebP decode cost scales with pixels per frame. */
+const TIERS = [
+  { dir: OUT_DIR, size: 512, quality: 76 },
+  { dir: join(OUT_DIR, 'sm'), size: 256, quality: 74 },
+] as const;
 
 /** Effect sizes below were tuned at 384px; scale them so the motion reads the same at any size. */
 const K = S / 384;
@@ -535,21 +540,32 @@ function renderFrame(rig: Rig, p: number): Buffer {
 
 async function bake(id: OperatorId): Promise<void> {
   const rig = await buildRig(id);
-  const pngs: Buffer[] = [];
+  const frames = TIERS.map((): Buffer[] => []);
   for (let f = 0; f < FRAMES; f++) {
     const raw = renderFrame(rig, f / FRAMES);
-    pngs.push(await sharp(raw, { raw: { width: S, height: S, channels: 3 } }).png({ compressionLevel: 1 }).toBuffer());
+    for (let t = 0; t < TIERS.length; t++) {
+      frames[t]!.push(
+        await sharp(raw, { raw: { width: S, height: S, channels: 3 } })
+          .resize(TIERS[t]!.size, TIERS[t]!.size, { kernel: 'lanczos3' })
+          .png({ compressionLevel: 1 })
+          .toBuffer(),
+      );
+    }
   }
-  const out = join(OUT_DIR, `${id}.webp`);
-  await sharp(pngs, { join: { animated: true } })
-    .webp({ loop: 0, delay: new Array(FRAMES).fill(DELAY_MS), quality: QUALITY, effort: 5 })
-    .toFile(out);
-  const kb = Math.round((await stat(out)).size / 1024);
-  console.log(`ok  ${id}.webp  ${FRAMES} frames  ${((FRAMES * DELAY_MS) / 1000).toFixed(1)}s  ${kb}KB${rig.cutout ? '' : '  (no cutout)'}`);
+  const sizes: string[] = [];
+  for (let t = 0; t < TIERS.length; t++) {
+    const { dir, size, quality } = TIERS[t]!;
+    const out = join(dir, `${id}.webp`);
+    await sharp(frames[t]!, { join: { animated: true } })
+      .webp({ loop: 0, delay: new Array(FRAMES).fill(DELAY_MS), quality, effort: 5 })
+      .toFile(out);
+    sizes.push(`${size}px ${Math.round((await stat(out)).size / 1024)}KB`);
+  }
+  console.log(`ok  ${id}.webp  ${FRAMES} frames  ${((FRAMES * DELAY_MS) / 1000).toFixed(1)}s  ${sizes.join('  ')}${rig.cutout ? '' : '  (no cutout)'}`);
 }
 
 async function main() {
-  await mkdir(OUT_DIR, { recursive: true });
+  for (const { dir } of TIERS) await mkdir(dir, { recursive: true });
   const args = process.argv.slice(2);
   const ids = (args.length ? args : OPERATORS) as OperatorId[];
   for (const id of ids) {

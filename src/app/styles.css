@@ -799,24 +799,30 @@ input { font: inherit; }
     0 0 22px 2px rgba(255, 210, 90, 0.7),
     0 0 0 1px #8a6a18;
 }
+.hcard-kira-foil, .cdetail-kira-foil {
+  position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; overflow: hidden;
+}
+/* The sweep band rides a 240%-wide strip moved by transform, so it animates without repainting. */
+.hcard-kira-foil::before, .cdetail-kira-foil::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 240%;
+  animation: foilSweep 2.4s ease-in-out infinite;
+}
 .hcard-kira-foil {
-  position: absolute; inset: 0; z-index: 3; pointer-events: none; mix-blend-mode: screen;
-  background:
-    linear-gradient(115deg, transparent 28%, rgba(255, 240, 180, 0.55) 46%, rgba(255, 210, 120, 0.2) 52%, transparent 64%),
-    linear-gradient(200deg, rgba(255, 220, 140, 0.12), transparent 40%);
-  background-size: 240% 100%, 100% 100%;
-  animation: packFoil 2.4s ease-in-out infinite;
+  z-index: 3;
+  background: linear-gradient(200deg, rgba(255, 220, 140, 0.12), transparent 40%);
+}
+.hcard-kira-foil::before {
+  background: linear-gradient(115deg, transparent 28%, rgba(255, 240, 180, 0.55) 46%, rgba(255, 210, 120, 0.2) 52%, transparent 64%);
 }
 .cdetail.kira {
   border-color: #e8c547;
   border-top-color: #ffe7a3;
   box-shadow: 0 0 0 1px #8a6a18, 0 0 22px -2px rgba(255, 200, 70, 0.45);
 }
-.cdetail-kira-foil {
-  position: absolute; inset: 0; z-index: 2; pointer-events: none; mix-blend-mode: screen;
+.cdetail-kira-foil { z-index: 2; }
+.cdetail-kira-foil::before {
   background: linear-gradient(115deg, transparent 30%, rgba(255, 240, 180, 0.5) 48%, transparent 62%);
-  background-size: 240% 100%;
-  animation: packFoil 2.6s ease-in-out infinite;
+  animation-duration: 2.6s;
 }
 .pack-card.kira.flipped .pack-card-front .hcard {
   border: 1.5px solid #e8c547 !important;
@@ -1097,9 +1103,9 @@ input { font: inherit; }
 .unit.flashed { filter: brightness(1.8) saturate(0.4); }
 .unit.stealth .unit-portrait, .unit.stealth .unit-body { opacity: 0.7; }
 .unit.stealth::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
+  content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 250%; pointer-events: none;
   background: linear-gradient(110deg, transparent 30%, rgba(180, 220, 255, 0.16) 45%, transparent 60%);
-  background-size: 250% 100%; animation: packFoil 2.6s linear infinite;
+  animation: stealthSweep 2.6s linear infinite;
 }
 .unit.dead { filter: grayscale(1) brightness(0.5); }
 .unit-portrait { position: relative; flex: none; width: 34px; margin-left: 3px; overflow: hidden; }
@@ -1774,6 +1780,9 @@ input { font: inherit; }
 @keyframes packIn { from { opacity: 0; transform: translateY(-60px) scale(0.7) rotate(-6deg); } }
 @keyframes packFloat { 50% { transform: translateY(-8px) rotate(0.6deg); } }
 @keyframes packFoil { 0% { background-position: 120% 0; } 60%, 100% { background-position: -40% 0; } }
+/* Transform equivalents of packFoil for 240% / 250% wide strips. */
+@keyframes foilSweep { 0% { transform: translateX(-70%); } 60%, 100% { transform: translateX(23.333%); } }
+@keyframes stealthSweep { 0% { transform: translateX(-72%); } 60%, 100% { transform: translateX(24%); } }
 @keyframes seamBlink { 50% { opacity: 0.95; box-shadow: 0 0 8px rgba(255, 255, 255, 0.8); } }
 @keyframes seamCharge { from { left: 45%; right: 45%; } to { left: -4px; right: -4px; } }
 @keyframes packShake {
