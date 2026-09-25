@@ -10,7 +10,7 @@ import sharp from 'sharp';
 
 const IDS = ['rookie', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'master', 'legend'];
 const OUT_DIR = join(import.meta.dirname, '..', 'public', 'ranks');
-const OUT_SIZE = 512;
+const OUT_SIZE = 1024;
 
 /** Near-black pixels connected to the border are background. */
 const BG_MAX = 6;
@@ -102,8 +102,8 @@ async function cutout(src: string): Promise<Buffer> {
     .toBuffer();
   const pad = 4;
   return sharp(trimmed)
+    .resize(OUT_SIZE - pad * 2, OUT_SIZE - pad * 2, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 }, kernel: 'lanczos3' })
     .extend({ top: pad, bottom: pad, left: pad, right: pad, background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .resize(OUT_SIZE, OUT_SIZE, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 }, kernel: 'lanczos3' })
     .png()
     .toBuffer();
 }

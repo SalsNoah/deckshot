@@ -27,17 +27,23 @@ const OPERATORS = [
 ] as const;
 type OperatorId = (typeof OPERATORS)[number];
 
-const S = 384;
+const S = 1024;
 const N = S * S;
 const FRAMES = 48;
 const DELAY_MS = 80;
 const QUALITY = 76;
 
-const AURA_FLOW_PX = 30;
+/** Effect sizes below were tuned at 384px; scale them so the motion reads the same at any size. */
+const K = S / 384;
+const px = (v: number) => Math.max(1, Math.round(v * K));
+
+const AURA_FLOW_PX = 30 * K;
 const AURA_CYCLES = 2;
-const FLAME_RISE_PX = 60;
-const PULSE_SPACING_PX = 56;
+const FLAME_RISE_PX = 60 * K;
+const PULSE_SPACING_PX = 56 * K;
 const PULSES_PER_LOOP = 4;
+/** Glowing lines at least this many pixels in area get racing pulses; smaller specks only breathe. */
+const ZIP_MIN_AREA = 30 * K * K;
 
 type Tuning = {
   /** Multiplier on how strongly background energy streams. */
@@ -258,7 +264,7 @@ async function buildRig(id: OperatorId): Promise<Rig> {
   }
 
   // Background plate: character removed and filled from the surroundings.
-  const grown = blur(alpha, 3);
+  const grown = blur(alpha, px(3));
   const known = new Float32Array(N);
   for (let i = 0; i < N; i++) known[i] = 1 - smoothstep(0.05, 0.25, grown[i]!);
   const bg = cutout ? inpaint(img, known) : img.slice();
@@ -291,7 +297,7 @@ async function buildRig(id: OperatorId): Promise<Rig> {
     const sat = mx < 1e-4 ? 0 : (mx - Math.min(r, g, b)) / mx;
     bgEnergy[i] = Math.pow(sat, 1.2) * smoothstep(0.25, 0.8, mx);
   }
-  const auraBlur = blur(bgEnergy, 6);
+  const auraBlur = blur(bgEnergy, px(6));
   const auraW = new Float32Array(N);
   const auraGain = (tune.auraFlow ?? 1) * (cutout ? 2.6 : 2.0);
   for (let i = 0; i < N; i++) auraW[i] = clamp01(auraBlur[i]! * auraGain);
@@ -307,10 +313,12 @@ async function buildRig(id: OperatorId): Promise<Rig> {
       const rl = Math.hypot(rx, ry) + 1e-3;
       // Curl of a smooth scalar field gives a swirling, divergence-free drift.
       const e = 0.5;
-      const n = (px: number, py: number) =>
-        Math.sin(px * 0.021 + 1.3) * Math.cos(py * 0.017 - 0.7) + 0.5 * Math.sin((px + py) * 0.035 + 2.1);
-      const cxv = (n(x, y + e) - n(x, y - e)) / (2 * e);
-      const cyv = -(n(x + e, y) - n(x - e, y)) / (2 * e);
+      const n = (qx: number, qy: number) =>
+        Math.sin(qx * 0.021 + 1.3) * Math.cos(qy * 0.017 - 0.7) + 0.5 * Math.sin((qx + qy) * 0.035 + 2.1);
+      const bx = x / K;
+      const by = y / K;
+      const cxv = (n(bx, by + e) - n(bx, by - e)) / (2 * e);
+      const cyv = -(n(bx + e, by) - n(bx - e, by)) / (2 * e);
       const cl = Math.hypot(cxv, cyv) + 1e-3;
       let dx = 0.55 * (rx / rl) + 0.6 * (cxv / cl);
       let dy = 0.55 * (ry / rl) - 0.75 + 0.6 * (cyv / cl);
@@ -319,7 +327,7 @@ async function buildRig(id: OperatorId): Promise<Rig> {
       dy /= dl;
       flowX[i] = dx * AURA_FLOW_PX;
       flowY[i] = dy * AURA_FLOW_PX;
-      flicker[i] = fract(0.5 + 0.5 * Math.sin(x * 0.013 + y * 0.009) + 0.3 * Math.cos(y * 0.021 - x * 0.006));
+      flicker[i] = fract(0.5 + 0.5 * Math.sin(bx * 0.013 + by * 0.009) + 0.3 * Math.cos(by * 0.021 - bx * 0.006));
     }
   }
 
@@ -330,9 +338,9 @@ async function buildRig(id: OperatorId): Promise<Rig> {
   for (let i = 0; i < N; i++) auraMean += auraW[i]!;
   auraMean /= N;
   const rimGain = 0.55 + 0.55 * (1 - clamp01(auraMean * 5));
-  const flame = valueNoise(10, 26, 7);
+  const flame = valueNoise(10 * K, 26 * K, 7);
   if (cutout) {
-    const halo = blur(alpha, 14);
+    const halo = blur(alpha, px(14));
     for (let i = 0; i < N; i++) rim[i] = clamp01(halo[i]! * 1.8 - alpha[i]! * 1.2);
     let wsum = 0;
     for (let i = 0; i < N; i++) {
@@ -349,10 +357,10 @@ async function buildRig(id: OperatorId): Promise<Rig> {
   // Twinkling background specks (city lights, sparks, embers).
   const lum = new Float32Array(N);
   for (let i = 0; i < N; i++) lum[i] = (bg[i * 3]! + bg[i * 3 + 1]! + bg[i * 3 + 2]!) / 3;
-  const lumBlur = blur(lum, 3);
+  const lumBlur = blur(lum, px(3));
   const sparkle = new Float32Array(N);
   const sparklePhase = new Float32Array(N);
-  const phaseNoise = valueNoise(5, 5, 11);
+  const phaseNoise = valueNoise(5 * K, 5 * K, 11);
   for (let i = 0; i < N; i++) {
     const peak = smoothstep(0.08, 0.2, lum[i]! - lumBlur[i]!) * smoothstep(0.35, 0.6, lum[i]!);
     sparkle[i] = peak * (1 - alpha[i]!);
@@ -361,7 +369,7 @@ async function buildRig(id: OperatorId): Promise<Rig> {
 
   // Glowing lines: neon on the body (and background when tuned), with distance along each line.
   // Thin dim lines count too when they stand out from their surroundings.
-  const energyBlur = blur(energy, 4);
+  const energyBlur = blur(energy, px(4));
   const line = new Float32Array(N);
   for (let i = 0; i < N; i++) {
     const onBody = cutout && !tune.bgPulses ? smoothstep(0.4, 0.7, alpha[i]!) : 1;
@@ -403,8 +411,7 @@ async function buildRig(id: OperatorId): Promise<Rig> {
       }
     }
     const size = tail;
-    // Tiny specks (eyes, sparks) only breathe; larger lines get racing pulses.
-    const zip = size >= 30 ? 1 : 0;
+    const zip = size >= ZIP_MIN_AREA ? 1 : 0;
     for (let q = 0; q < size; q++) lineDist[queue[q]!] = -1;
     head = 0;
     tail = 0;
@@ -506,7 +513,7 @@ function renderFrame(rig: Rig, p: number): Buffer {
       bloom[o + c] = hot * k;
     }
   }
-  const glow = blur(bloom, 4, 3);
+  const glow = blur(bloom, px(4), 3);
 
   if (rig.cutout) {
     for (let i = 0; i < N; i++) {
