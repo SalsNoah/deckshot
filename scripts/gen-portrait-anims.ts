@@ -50,13 +50,16 @@ type Tuning = {
   auraFlow?: number;
   /** Also race pulses along glowing lines in the background. */
   bgPulses?: boolean;
+  /** Only thin neon strokes glow, for characters whose whole body is bright and saturated. */
+  thinLinesOnly?: boolean;
 };
 
 // Cut-outs for these portraits lose most of the character; animate without layer separation.
-const NO_CUTOUT = new Set<OperatorId>(['ghost', 'shard', 'spark', 'chum', 'dot']);
+const NO_CUTOUT = new Set<OperatorId>(['ghost', 'shard', 'spark', 'dot']);
 
 const TUNING: Partial<Record<OperatorId, Tuning>> = {
   kingpin: { auraFlow: 0.3, bgPulses: true },
+  chum: { thinLinesOnly: true },
 };
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -375,7 +378,7 @@ async function buildRig(id: OperatorId): Promise<Rig> {
     const onBody = cutout && !tune.bgPulses ? smoothstep(0.4, 0.7, alpha[i]!) : 1;
     const bright = smoothstep(0.3, 0.65, energy[i]!);
     const thin = smoothstep(0.12, 0.3, energy[i]!) * smoothstep(0.04, 0.12, energy[i]! - energyBlur[i]!);
-    line[i] = Math.max(bright, thin) * onBody;
+    line[i] = (tune.thinLinesOnly ? thin : Math.max(bright, thin)) * onBody;
   }
   const lineDist = new Float32Array(N);
   const lineZip = new Uint8Array(N);
