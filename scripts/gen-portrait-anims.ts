@@ -47,7 +47,7 @@ type Tuning = {
 };
 
 // Cut-outs for these portraits lose most of the character; animate without layer separation.
-const NO_CUTOUT = new Set<OperatorId>(['ghost', 'shard', 'spark']);
+const NO_CUTOUT = new Set<OperatorId>(['ghost', 'shard', 'spark', 'chum', 'dot']);
 
 const TUNING: Partial<Record<OperatorId, Tuning>> = {
   kingpin: { auraFlow: 0.3, bgPulses: true },
