@@ -1,4 +1,4 @@
-import { Check, ChevronRight, Dices } from 'lucide-react';
+import { Check, ChevronRight, Dices, FastForward } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import { card, type Rarity } from '../../engine';
 import { sfx, vibrate } from '../sfx';
@@ -6,12 +6,18 @@ import { publicAsset } from '../ui/assets';
 import { CardDetail, HandCard } from '../ui/cards';
 import { RARITY_COLOR } from '../ui/icons';
 
-type Phase = 'intro' | 'ready' | 'charging' | 'burst' | 'reveal';
+type Phase = 'intro' | 'ready' | 'charging' | 'burst' | 'scan' | 'reveal';
 
 const RARITY_RANK: Record<Rarity, number> = { common: 0, rare: 1, epic: 2, legend: 3 };
+const RARITY_ORDER: Rarity[] = ['common', 'rare', 'epic', 'legend'];
 const RARITY_LABEL: Record<Rarity, string> = { common: 'COMMON', rare: 'RARE', epic: 'EPIC', legend: 'LEGEND' };
-/** Wait before the next card flips during "flip all", long enough for that rarity's effect. */
-const FLIP_GAP: Record<Rarity, number> = { common: 380, rare: 420, epic: 760, legend: 2700 };
+const CHARGE_MS: Record<Rarity, number> = { common: 780, rare: 960, epic: 1280, legend: 1600 };
+const BURST_MS = 520;
+const SCAN_HOLD: Record<Rarity, number> = { common: 340, rare: 520, epic: 780, legend: 1180 };
+const HOLD_MS: Record<Rarity, number> = { common: 0, rare: 0, epic: 480, legend: 1040 };
+const HOLD_MULTI: Record<Rarity, number> = { common: 0, rare: 0, epic: 300, legend: 640 };
+const FLIP_GAP: Record<Rarity, number> = { common: 360, rare: 420, epic: 1880, legend: 2920 };
+const SPOT_MS: Record<Rarity, number> = { common: 0, rare: 0, epic: 1700, legend: 2800 };
 
 export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againLabel }: {
   cards: string[];
@@ -26,25 +32,41 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
   againLabel?: string;
 }) {
   const [phase, setPhase] = useState<Phase>('intro');
+  const [tease, setTease] = useState<Rarity>('common');
+  const [scanLocked, setScanLocked] = useState(false);
   const [flipped, setFlipped] = useState<boolean[]>(() => cards.map(() => false));
+  const [holding, setHolding] = useState<number | null>(null);
   const [spotlight, setSpotlight] = useState<number | null>(null);
   const [burstAt, setBurstAt] = useState<number | null>(null);
   const [peek, setPeek] = useState<number | null>(null);
   const [flippingAll, setFlippingAll] = useState(false);
   const timers = useRef<number[]>([]);
+  const gen = useRef(0);
   const dragX = useRef<number | null>(null);
   const torn = useRef(false);
+  const holdingRef = useRef<number | null>(null);
+  const spotRef = useRef<number | null>(null);
 
   const rarities = cards.map((id) => card(id).rarity);
   const top = rarities.reduce<Rarity>((a, r) => (RARITY_RANK[r] > RARITY_RANK[a] ? r : a), 'common');
   const allOpen = flipped.every(Boolean);
   const multi = cards.length > 6;
   const dealStep = multi ? 45 : 140;
-  const flipGapScale = multi ? 0.45 : 1;
+  const flipGapScale = multi ? 0.5 : 1;
+  const scanScale = multi ? 0.86 : 1;
+  const accent = phase === 'scan' ? RARITY_COLOR[tease]
+    : phase === 'burst' || phase === 'reveal' ? RARITY_COLOR[top]
+      : '#2ee6d6';
+  const preReveal = phase === 'charging' || phase === 'burst' || phase === 'scan';
 
   const later = (ms: number, fn: () => void) => {
-    timers.current.push(window.setTimeout(fn, ms));
+    const g = gen.current;
+    timers.current.push(window.setTimeout(() => {
+      if (g !== gen.current) return;
+      fn();
+    }, ms));
   };
+
   useEffect(() => {
     later(650, () => setPhase('ready'));
     const pending = timers.current;
@@ -61,21 +83,68 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
     [],
   );
 
+  const dealCards = () => {
+    setPhase('reveal');
+    cards.forEach((_, i) => later(i * dealStep, () => sfx.cardDeal()));
+  };
+
+  const startScan = () => {
+    const ladder = RARITY_ORDER.filter((r) => RARITY_RANK[r] <= RARITY_RANK[top]);
+    setPhase('scan');
+    setTease(ladder[0] ?? 'common');
+    setScanLocked(ladder.length === 1);
+    sfx.lockOn();
+    sfx.heartbeat();
+    let at = 0;
+    ladder.forEach((r, i) => {
+      later(at, () => {
+        setTease(r);
+        const last = i === ladder.length - 1;
+        setScanLocked(last);
+        if (i > 0) {
+          sfx.rankUp(i);
+          vibrate(r === 'legend' ? [30, 50, 80] : [20, 30, 20]);
+          if (r === 'legend') sfx.legendCharge();
+        } else if (last) {
+          sfx.heartbeat();
+        }
+      });
+      at += Math.round(SCAN_HOLD[r] * scanScale);
+    });
+    later(at + 220, dealCards);
+  };
+
   const tear = () => {
     if (phase !== 'ready' || torn.current) return;
     torn.current = true;
+    setTease('common');
     setPhase('charging');
     sfx.packCharge();
     vibrate([20, 40, 20, 40, 30]);
-    later(950, () => {
+    const charge = CHARGE_MS[top];
+    for (let t = 480; t < charge; t += 420) later(t, () => sfx.heartbeat());
+    later(charge, () => {
       setPhase('burst');
-      sfx.packOpen();
-      vibrate(60);
+      setTease(top);
+      sfx.packOpen(RARITY_RANK[top]);
+      vibrate(top === 'legend' ? [50, 40, 90] : 60);
     });
-    later(1550, () => {
-      setPhase('reveal');
-      cards.forEach((_, i) => later(i * dealStep, () => sfx.cardDeal()));
-    });
+    later(charge + BURST_MS, startScan);
+  };
+
+  const skipToReveal = () => {
+    if (!preReveal) return;
+    gen.current += 1;
+    timers.current.forEach((t) => window.clearTimeout(t));
+    timers.current = [];
+    torn.current = true;
+    holdingRef.current = null;
+    spotRef.current = null;
+    setHolding(null);
+    setSpotlight(null);
+    setScanLocked(false);
+    setTease(top);
+    dealCards();
   };
 
   const onPackDown = (e: PointerEvent) => {
@@ -92,26 +161,61 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
   const reveal = (i: number) => {
     const r = rarities[i];
     const isKira = kira[i];
+    const isFlow = flow[i];
     setFlipped((f) => f.map((v, j) => (j === i ? true : v)));
     sfx.cardFlip(r);
     if (isKira) {
+      later(r === 'legend' ? 420 : 90, () => sfx.kira());
       vibrate([30, 40, 30]);
       setBurstAt(i);
       later(900, () => setBurstAt((b) => (b === i ? null : b)));
     }
+    if (isFlow) later(r === 'legend' ? 560 : 180, () => sfx.motion());
     if (r === 'legend') {
       vibrate([40, 60, 120]);
-      later(380, () => setSpotlight(i));
-    } else if (r === 'epic' && !isKira) {
-      vibrate(40);
-      setBurstAt(i);
-      later(900, () => setBurstAt((b) => (b === i ? null : b)));
+      later(280, () => {
+        sfx.legendBurst();
+        spotRef.current = i;
+        setSpotlight(i);
+      });
+    } else if (r === 'epic') {
+      if (!isKira) {
+        vibrate(40);
+        setBurstAt(i);
+        later(900, () => setBurstAt((b) => (b === i ? null : b)));
+      }
+      later(240, () => {
+        spotRef.current = i;
+        setSpotlight(i);
+      });
     }
   };
 
-  const flip = (i: number) => {
-    if (phase !== 'reveal' || flipped[i] || spotlight !== null || flippingAll) return;
-    reveal(i);
+  const beginFlip = (i: number, fromAll = false) => {
+    if (phase !== 'reveal' || flipped[i]) return;
+    if (flippingAll && !fromAll) return;
+    if (spotRef.current !== null || holdingRef.current !== null) {
+      if (fromAll) later(140, () => beginFlip(i, true));
+      return;
+    }
+    const r = rarities[i];
+    const hold = (multi ? HOLD_MULTI : HOLD_MS)[r];
+    if (hold <= 0) {
+      reveal(i);
+      return;
+    }
+    holdingRef.current = i;
+    setHolding(i);
+    if (r === 'legend') sfx.legendCharge();
+    else sfx.heartbeat();
+    later(Math.round(hold * 0.58), () => {
+      if (r === 'legend') sfx.crack();
+    });
+    later(hold, () => {
+      holdingRef.current = null;
+      setHolding(null);
+      reveal(i);
+    });
   };
 
   const flipAll = () => {
@@ -119,20 +223,37 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
     let at = 0;
     cards.forEach((_, i) => {
       if (flipped[i]) return;
-      later(at, () => reveal(i));
-      at += Math.max(90, (FLIP_GAP[rarities[i]] + (kira[i] ? 120 : 0)) * flipGapScale);
+      later(at, () => beginFlip(i, true));
+      const r = rarities[i];
+      at += (multi ? HOLD_MULTI : HOLD_MS)[r] + Math.max(90, (FLIP_GAP[r] + (kira[i] ? 140 : 0) + (flow[i] ? 80 : 0)) * flipGapScale);
     });
     later(at, () => setFlippingAll(false));
   };
 
   useEffect(() => {
-    if (spotlight === null) return;
-    const t = window.setTimeout(() => setSpotlight(null), 2300);
+    if (spotlight === null) {
+      spotRef.current = null;
+      return;
+    }
+    const r = rarities[spotlight] ?? 'epic';
+    const t = window.setTimeout(() => {
+      spotRef.current = null;
+      setSpotlight(null);
+    }, SPOT_MS[r] || 1700);
     return () => window.clearTimeout(t);
   }, [spotlight]);
 
+  const head =
+    phase === 'scan' ? (scanLocked ? 'ロックオン' : 'シグナル解析中…')
+      : phase === 'charging' || phase === 'burst' ? '開封中…'
+        : phase === 'reveal' ? (allOpen ? `獲得カード（${cards.length}枚）` : 'タップしてめくる')
+          : 'パックを開封';
+
   return (
-    <div className={`screen pack-screen phase-${phase}${multi ? ' pack-multi' : ''}`} style={{ '--hi': RARITY_COLOR[top] } as CSSProperties}>
+    <div
+      className={`screen pack-screen phase-${phase} top-${top}${multi ? ' pack-multi' : ''}${holding !== null ? ' pack-holding' : ''}`}
+      style={{ '--hi': accent } as CSSProperties}
+    >
       <div className="pack-bg" aria-hidden>
         <div className="pack-bg-rays" />
         {particles.map((p, i) => (
@@ -146,11 +267,11 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
 
       <div className="pack-head">
         <span>OPERATOR SUPPLY{multi ? ' ×10' : ''}</span>
-        <b>{phase === 'reveal' ? (allOpen ? `獲得カード（${cards.length}枚）` : 'タップしてめくる') : 'パックを開封'}</b>
+        <b>{head}</b>
       </div>
 
       <div className="pack-stage">
-        {phase !== 'reveal' && (
+        {phase !== 'reveal' && phase !== 'scan' && (
           <button
             className="pack"
             onClick={tear}
@@ -168,6 +289,22 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
         )}
         {phase === 'burst' && <div className="pack-flash" />}
 
+        {phase === 'scan' && (
+          <div className={`pack-scan r-${tease}${scanLocked ? ' locked' : ''}`} aria-hidden>
+            <div className="pack-scan-wash" />
+            <div className="pack-scan-line" />
+            <div className="pack-scan-core">
+              <div key={tease} className="pack-scan-reticle">
+                <i /><i /><i /><i />
+              </div>
+              <div className="pack-scan-copy">
+                <small>{scanLocked ? 'SIGNAL LOCK' : 'SCANNING'}</small>
+                <b>{RARITY_LABEL[tease]}</b>
+              </div>
+            </div>
+          </div>
+        )}
+
         {phase === 'reveal' && (
           <div className={`pack-cards${multi ? ' multi' : ''}`}>
             {cards.map((id, i) => {
@@ -177,7 +314,7 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
               return (
                 <div
                   key={`${id}-${i}`}
-                  className={`pack-card r-${r} ${isKira ? 'kira' : ''} ${flipped[i] ? 'flipped' : ''} ${burstAt === i ? 'burst' : ''}`}
+                  className={`pack-card r-${r} ${isKira ? 'kira' : ''} ${flow[i] ? 'anim' : ''} ${flipped[i] ? 'flipped' : ''} ${holding === i ? 'holding' : ''} ${burstAt === i ? 'burst' : ''}`}
                   style={{
                     '--i': multi ? Math.min(i, 12) : i,
                     '--dx': `${col * (multi ? 64 : 112)}px`,
@@ -185,7 +322,7 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
                   } as CSSProperties}
                 >
                   <div className="pack-card-inner">
-                    <button className="pack-card-back" onClick={() => flip(i)} aria-label="カードをめくる">
+                    <button className="pack-card-back" onClick={() => beginFlip(i)} aria-label="カードをめくる">
                       <span className="pack-card-emblem" />
                     </button>
                     <div className="pack-card-front">
@@ -194,6 +331,8 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
                   </div>
                   <div className="pack-card-tag">
                     {flipped[i] && <span style={{ color: RARITY_COLOR[r] }}>{RARITY_LABEL[r]}</span>}
+                    {flipped[i] && kira[i] && <em className="tag-kira">KIRA</em>}
+                    {flipped[i] && flow[i] && <em className="tag-anim">ANIM</em>}
                     {flipped[i] && fresh[i] && <em>NEW</em>}
                   </div>
                 </div>
@@ -205,8 +344,13 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
 
       <div className="pack-foot">
         {phase === 'ready' && <div className="pack-hint">パックをタップ、またはスワイプして開封</div>}
+        {preReveal && (
+          <button className="btn ghost pack-skip" onClick={skipToReveal}>
+            <FastForward size={14} /> スキップ
+          </button>
+        )}
         {phase === 'reveal' && !allOpen && (
-          <button className="btn ghost" onClick={flipAll} disabled={spotlight !== null || flippingAll}>すべてめくる</button>
+          <button className="btn ghost" onClick={flipAll} disabled={spotlight !== null || flippingAll || holding !== null}>すべてめくる</button>
         )}
         {phase === 'reveal' && allOpen && (
           <div className="pack-actions">
@@ -227,15 +371,20 @@ export function PackOpening({ cards, kira, flow, fresh, onClose, onAgain, againL
       </div>
 
       {spotlight !== null && (
-        <div className="pack-spotlight" onClick={() => setSpotlight(null)}>
+        <div className={`pack-spotlight r-${rarities[spotlight]}`} onClick={() => { spotRef.current = null; setSpotlight(null); }}>
           <div className="pack-spot-rays" />
           <div className="pack-spot-flash" />
           <div className="pack-spot-card">
             <HandCard cardId={cards[spotlight]} cost={card(cards[spotlight]).cost} kira={kira[spotlight]} flow={flow[spotlight]} artSize={260} />
           </div>
           <div className="pack-spot-title">
-            <b>LEGEND</b>
+            <b>{RARITY_LABEL[rarities[spotlight]]}</b>
             <span>{card(cards[spotlight]).en}</span>
+            <div className="pack-spot-tags">
+              {kira[spotlight] && <em className="tag-kira">KIRA</em>}
+              {flow[spotlight] && <em className="tag-anim">ANIM</em>}
+              {fresh[spotlight] && <em>NEW</em>}
+            </div>
           </div>
         </div>
       )}

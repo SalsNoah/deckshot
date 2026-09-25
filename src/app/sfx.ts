@@ -431,7 +431,8 @@ export const sfx = {
     [0.2, 0.42, 0.6, 0.74].forEach((d) => click(c, t + d, 0.07));
   },
 
-  packOpen() {
+  /** Opening blast; `tier` 0–3 (common → legend) layers on a bigger chord. */
+  packOpen(tier = 0) {
     const c = ac();
     if (!c) return;
     const t = c.currentTime;
@@ -439,6 +440,100 @@ export const sfx = {
     tone(c, t, 'sine', 120, 0.5, 0.3, 40);
     chirp(c, t + 0.04, 600, 2400, 0.35, 0.16);
     neonSweep(c, t + 0.05, 300, 1400, 0.5, 0.12);
+    if (tier >= 2) {
+      [523, 659, 784].forEach((f, i) => tone(c, t + 0.08 + i * 0.04, 'triangle', f, 0.7, 0.08));
+    }
+    if (tier >= 3) {
+      tone(c, t, 'sine', 52, 1.3, 0.55, 28);
+      [1047, 1319, 1568, 2093].forEach((f, i) => chirp(c, t + 0.2 + i * 0.07, f * 0.8, f, 0.35, 0.1));
+      neonSweep(c, t + 0.1, 400, 2200, 1.0, 0.14);
+    }
+  },
+
+  /** Low "lub-dub" thump for pre-reveal tension. */
+  heartbeat() {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    [0, 0.19].forEach((d, i) => {
+      const k = i === 0 ? 1 : 0.7;
+      tone(c, t + d, 'sine', 64, 0.2, 0.75 * k, 34, 0.004);
+      noise(c, t + d, 0.09, 'lowpass', 240, 0.32 * k, 80);
+    });
+  },
+
+  /** Foil zip while the pack is torn; pitch climbs with progress (0–1). */
+  tearTick(progress: number) {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    noise(c, t, 0.05, 'bandpass', 1800 + progress * 4200, 0.18, 900);
+    click(c, t, 0.05);
+  },
+
+  /** Crackle + rising arpeggio when the omen light climbs to `tier` (1–3). */
+  rankUp(tier: number) {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    noise(c, t, 0.2, 'highpass', 4200, 0.32);
+    tone(c, t, 'sine', 90, 0.45, 0.45, 42);
+    const base = [523, 587, 659, 784][Math.min(3, Math.max(0, tier))]!;
+    [1, 1.25, 1.5, 2].forEach((m, i) => chirp(c, t + 0.05 + i * 0.055, base * m * 0.8, base * m, 0.2, 0.13));
+  },
+
+  /** Rising drone while a legend card is about to crack open. */
+  legendCharge() {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    neonSweep(c, t, 70, 560, 1.5, 0.16);
+    noise(c, t, 1.5, 'bandpass', 200, 0.2, 4600);
+    tone(c, t, 'sine', 45, 1.4, 0.32, 95, 0.4);
+  },
+
+  /** Glass crack on the legend card back. */
+  crack() {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    noise(c, t, 0.14, 'highpass', 5200, 0.36);
+    [2900, 3700, 4600].forEach((f, i) => tone(c, t + i * 0.018, 'triangle', f, 0.1, 0.06, f * 0.55));
+    tone(c, t, 'sine', 72, 0.28, 0.45, 38);
+  },
+
+  /** Big impact + sustained chord for the legend cut-in. */
+  legendBurst() {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    tone(c, t, 'sine', 48, 1.5, 0.7, 26);
+    noise(c, t, 1.2, 'lowpass', 3200, 0.6, 60);
+    noise(c, t, 0.9, 'highpass', 6000, 0.22);
+    [523, 659, 784, 1047].forEach((f) => tone(c, t + 0.05, 'triangle', f, 1.6, 0.07, undefined, 0.03));
+    [1047, 1319, 1568, 2093, 2637].forEach((f, i) => chirp(c, t + 0.12 + i * 0.06, f * 0.8, f, 0.3, 0.11));
+  },
+
+  /** Glittery chimes for a kira (shiny) pull. */
+  kira() {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    [2093, 2637, 3136, 3951, 3136, 4186].forEach((f, i) => chirp(c, t + i * 0.045, f * 0.9, f, 0.12, 0.08));
+    noise(c, t, 0.3, 'highpass', 8000, 0.09);
+  },
+
+  /** Digital glitch burst for a motion (animated) rare. */
+  motion() {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    for (let i = 0; i < 8; i++) {
+      tone(c, t + i * 0.035, 'square', 400 + ((i * 733) % 2000), 0.03, 0.06);
+      if (i % 2 === 0) noise(c, t + i * 0.035, 0.03, 'bandpass', 3000 + i * 400, 0.12);
+    }
+    chirp(c, t + 0.3, 660, 2640, 0.4, 0.14);
+    [659, 831, 988, 1319].forEach((f, i) => tone(c, t + 0.34 + i * 0.05, 'triangle', f, 0.6, 0.06));
   },
 
   cardDeal() {

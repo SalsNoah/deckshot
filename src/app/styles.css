@@ -428,6 +428,72 @@ input { font: inherit; }
   animation: packFlash 0.6s ease-out both;
 }
 .pack-hint { font-family: var(--font-jp); font-size: 13px; color: #c5d0dc; animation: pulse 1.4s infinite; }
+.pack-skip { display: inline-flex; align-items: center; gap: 6px; }
+
+.phase-charging.top-epic .pack, .phase-charging.top-legend .pack { filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 28px color-mix(in srgb, var(--hi) 55%, transparent)); }
+.phase-charging.top-legend { animation: packScreenShake 0.08s linear infinite; }
+.phase-scan.top-epic .pack-stage, .phase-scan.top-legend .pack-stage { animation: packScreenShake 0.1s linear infinite; }
+.phase-scan.top-legend .pack-stage { animation-duration: 0.07s; }
+.phase-charging .pack-bg-rays, .phase-burst .pack-bg-rays, .phase-scan .pack-bg-rays { opacity: 0.95; animation-duration: 5s; }
+.phase-scan .pack-bg-rays { animation-duration: 3.4s; }
+
+.pack-scan { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; pointer-events: none; }
+.pack-scan-wash {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 55% at 50% 46%, color-mix(in srgb, var(--hi) 55%, transparent), transparent 70%),
+    radial-gradient(circle at 50% 50%, transparent 36%, rgba(0, 0, 0, 0.35) 100%);
+  animation: packScanPulse 0.7s ease-in-out infinite;
+}
+.pack-scan.locked .pack-scan-wash { animation: packScanLock 0.45s ease-out both; }
+.pack-scan-line {
+  position: absolute; left: 8%; right: 8%; height: 2px; top: 18%;
+  background: linear-gradient(90deg, transparent, var(--hi), transparent);
+  box-shadow: 0 0 12px var(--hi);
+  animation: packScanSweep 1.05s linear infinite;
+}
+.pack-scan-core { position: relative; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.pack-scan-reticle {
+  position: relative; width: 168px; height: 168px;
+  border: 1px solid color-mix(in srgb, var(--hi) 50%, transparent);
+  box-shadow: 0 0 28px color-mix(in srgb, var(--hi) 40%, transparent), inset 0 0 24px color-mix(in srgb, var(--hi) 16%, transparent);
+  animation: packScanReticle 0.5s cubic-bezier(0.2, 0.85, 0.2, 1) both;
+}
+.pack-scan-reticle::before, .pack-scan-reticle::after {
+  content: ''; position: absolute; left: 50%; top: 50%; background: color-mix(in srgb, var(--hi) 80%, #fff);
+  transform: translate(-50%, -50%);
+}
+.pack-scan-reticle::before { width: 2px; height: 22px; }
+.pack-scan-reticle::after { width: 22px; height: 2px; }
+.pack-scan-reticle i { position: absolute; width: 18px; height: 18px; border-color: var(--hi); border-style: solid; }
+.pack-scan-reticle i:nth-child(1) { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+.pack-scan-reticle i:nth-child(2) { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+.pack-scan-reticle i:nth-child(3) { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+.pack-scan-reticle i:nth-child(4) { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+.pack-scan.r-legend .pack-scan-core::before {
+  content: ''; position: absolute; left: 50%; top: 84px; z-index: -1; width: 220px; height: 220px;
+  translate: -50% -50%; border-radius: 50%; pointer-events: none;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 201, 77, 0.4) 0 4deg, transparent 4deg 16deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0 18%, transparent 62%);
+  mask-image: radial-gradient(circle, #000 0 18%, transparent 62%);
+  animation: rotate 2s linear infinite;
+}
+.pack-scan-copy { text-align: center; }
+.pack-scan-copy small {
+  display: block; font-family: var(--font-num); font-weight: 700; font-size: 11px; letter-spacing: 0.42em;
+  color: color-mix(in srgb, var(--hi) 80%, #fff);
+}
+.pack-scan-copy b {
+  display: block; margin-top: 4px;
+  font-family: var(--font-logo); font-weight: 400; font-size: 42px; letter-spacing: 0.08em; line-height: 1;
+  color: #fff; text-shadow: 0 0 18px var(--hi), 2px 2px 0 rgba(0, 0, 0, 0.55);
+}
+.pack-scan.r-epic .pack-scan-copy b { color: #f0d8ff; }
+.pack-scan.r-legend .pack-scan-copy b {
+  color: #ffe38a;
+  text-shadow: 0 0 18px rgba(255, 201, 77, 0.95), 2px 2px 0 rgba(80, 40, 0, 0.7);
+}
+.pack-scan.locked .pack-scan-copy b { animation: packScanPunch 0.4s cubic-bezier(0.2, 1.4, 0.3, 1) both; }
 
 .pack-cards { display: flex; gap: 12px; justify-content: center; align-items: center; }
 .pack-cards.multi {
@@ -450,7 +516,8 @@ input { font: inherit; }
   top: calc(100% + 2px);
   font-size: 9px;
   letter-spacing: 0.08em;
-  height: 14px;
+  height: auto;
+  flex-wrap: wrap;
 }
 .pack-cards.multi .pack-card-emblem { width: 36px; height: 36px; }
 .pack-cards.multi .pack-card-emblem::before { height: 48px; }
@@ -506,6 +573,19 @@ input { font: inherit; }
   background: linear-gradient(115deg, transparent 35%, rgba(255, 235, 170, 0.45) 48%, transparent 60%);
   background-size: 260% 100%; animation: packFoil 2.4s ease-in-out infinite;
 }
+.pack-card.holding { z-index: 3; animation: cardQuake 0.35s ease-in-out infinite; }
+.pack-card.holding .pack-card-back {
+  box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.5), 0 0 28px 6px var(--r);
+  animation: auraPulse 0.35s ease-in-out infinite;
+}
+.pack-card.holding.r-legend .pack-card-back::after {
+  content: ''; position: absolute; inset: 8%; pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 42%, rgba(255, 230, 160, 0.85) 50%, transparent 58%),
+    linear-gradient(70deg, transparent 46%, rgba(255, 255, 255, 0.35) 50%, transparent 54%);
+  mix-blend-mode: screen;
+  animation: packCrack 0.5s steps(3) both;
+}
 .pack-card.burst::after {
   content: ''; position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; border-radius: 50%; pointer-events: none;
   border: 3px solid var(--r); box-shadow: 0 0 20px var(--r), inset 0 0 20px var(--r);
@@ -521,6 +601,8 @@ input { font: inherit; }
   font-style: normal; padding: 0 5px; border-radius: 3px; background: var(--opp); color: #fff; letter-spacing: 0.06em;
   animation: popIn 0.3s 0.35s both;
 }
+.pack-card-tag em.tag-kira, .pack-spot-tags em.tag-kira { background: #8a6a12; color: #ffe7a3; }
+.pack-card-tag em.tag-anim, .pack-spot-tags em.tag-anim { background: #123a44; color: #5ff5e8; }
 .pack-foot { position: relative; z-index: 2; min-height: 64px; width: 100%; display: grid; place-items: center; }
 .pack-actions { display: flex; flex-direction: column; gap: 8px; width: 100%; animation: slideUp 0.3s both; }
 .pack-actions .btn,
@@ -528,9 +610,11 @@ input { font: inherit; }
 
 .pack-spotlight {
   position: absolute; inset: 0; z-index: 30; display: grid; place-items: center;
-  background: radial-gradient(circle at 50% 45%, rgba(255, 201, 77, 0.35), rgba(4, 6, 10, 0.92) 60%);
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--hi) 38%, transparent), rgba(4, 6, 10, 0.92) 60%);
   animation: fadeIn 0.2s;
 }
+.pack-spotlight.r-epic { --hi: #c77dff; }
+.pack-spotlight.r-legend { --hi: #ffc94d; }
 .pack-spot-rays {
   position: absolute; left: 50%; top: 45%; width: 160vmax; height: 160vmax; transform: translate(-50%, -50%);
   background: repeating-conic-gradient(from 0deg, rgba(255, 214, 110, 0.35) 0 5deg, transparent 5deg 15deg);
@@ -551,6 +635,18 @@ input { font: inherit; }
   animation: spotText 0.6s 0.2s cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
 .pack-spot-title span { display: block; font-family: var(--font-num); font-weight: 700; font-size: 15px; letter-spacing: 0.3em; color: #ffe7a3; animation: slideUp 0.4s 0.4s both; }
+.pack-spotlight.r-epic .pack-spot-title b {
+  background: linear-gradient(180deg, #f6e8ff, #c77dff 55%, #7a3dff);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 16px rgba(199, 125, 255, 0.8));
+}
+.pack-spotlight.r-epic .pack-spot-title span { color: #e4c4ff; }
+.pack-spotlight.r-epic .pack-spot-card .hcard { box-shadow: 0 0 0 3px #c77dff, 0 0 50px 8px rgba(199, 125, 255, 0.7); }
+.pack-spotlight.r-epic .pack-spot-rays {
+  background: repeating-conic-gradient(from 0deg, rgba(199, 125, 255, 0.35) 0 5deg, transparent 5deg 15deg);
+}
+.pack-spot-tags { display: flex; justify-content: center; gap: 6px; margin-top: 8px; animation: slideUp 0.4s 0.5s both; }
+.pack-spot-tags em { font-style: normal; padding: 2px 7px; border-radius: 3px; background: var(--opp); color: #fff; font-family: var(--font-num); font-weight: 700; font-size: 11px; letter-spacing: 0.12em; }
 .gacha-shop {
   padding: 12px; border-radius: 8px; border: 1px solid var(--line);
   background: rgba(17, 24, 35, 0.78); backdrop-filter: blur(8px);
@@ -1798,6 +1894,18 @@ input { font: inherit; }
 @keyframes lidFly { to { transform: translate(70px, -240px) rotate(28deg); opacity: 0; } }
 @keyframes bodyDrop { to { transform: translateY(260px) scale(0.9); opacity: 0; } }
 @keyframes packFlash { 0% { opacity: 1; transform: translate(-50%, -50%) scale(0.2); } 30% { opacity: 1; transform: translate(-50%, -50%) scale(6); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(14); } }
+@keyframes packScreenShake {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-2px, 1px); }
+  50% { transform: translate(2px, -1px); }
+  75% { transform: translate(-1px, -2px); }
+}
+@keyframes packScanPulse { 50% { opacity: 0.72; } }
+@keyframes packScanLock { from { filter: brightness(2.2); } to { filter: brightness(1); } }
+@keyframes packScanSweep { from { top: 16%; } to { top: 78%; } }
+@keyframes packScanReticle { from { transform: scale(1.35); opacity: 0; } }
+@keyframes packScanPunch { from { transform: scale(1.45); letter-spacing: 0.28em; opacity: 0.2; } }
+@keyframes packCrack { from { opacity: 0; clip-path: inset(40% 40% 40% 40%); } to { opacity: 1; clip-path: inset(0); } }
 @keyframes dealIn { from { opacity: 0; transform: translate(var(--dx), -20px) scale(0.25) rotate(-20deg); } }
 @keyframes cardHover { 50% { transform: translateY(-5px); } }
 @keyframes cardQuake { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-1.5px, -2px) rotate(-0.8deg); } 75% { transform: translate(1.5px, -3px) rotate(0.8deg); } }
@@ -1928,7 +2036,12 @@ input { font: inherit; }
   .battle.in-combat .zone.contested::before,
   .battle.in-combat .zone.contested .zone-line.contest,
   .unit.stealth::after,
-  .cv-ace::before { animation: none; }
+  .cv-ace::before,
+  .phase-charging.top-legend,
+  .phase-scan.top-epic .pack-stage,
+  .phase-scan.top-legend .pack-stage,
+  .pack-scan-line,
+  .pack-card.holding { animation: none; }
 }
 
 /* ---------- animation preview ---------- */
