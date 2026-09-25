@@ -367,6 +367,61 @@ export const sfx = {
     noise(c, t, 0.3, 'bandpass', 900, 0.22, 3200);
   },
 
+  /** Scope lock-on beeps before a headshot lands. */
+  lockOn() {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    [0, 0.08, 0.16].forEach((d, i) => chirp(c, t + d, 1600 + i * 420, 2400 + i * 520, 0.05, 0.11));
+    tone(c, t + 0.26, 'sine', 3520, 0.22, 0.07);
+    noise(c, t, 0.4, 'bandpass', 500, 0.08, 2400);
+  },
+
+  /** Sting for the simultaneous plan reveal. */
+  reveal() {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    tone(c, t, 'sine', 70, 0.5, 0.35, 40);
+    noise(c, t, 0.4, 'bandpass', 500, 0.25, 5200);
+    neonSweep(c, t + 0.02, 180, 1400, 0.35, 0.14);
+    chirp(c, t + 0.2, 880, 1760, 0.2, 0.12);
+  },
+
+  cutin() {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    noise(c, t, 0.24, 'highpass', 1200, 0.22, 7500);
+    chirp(c, t + 0.05, 660, 1980, 0.16, 0.12);
+  },
+
+  whoosh() {
+    const c = ac();
+    if (!c) return;
+    noise(c, c.currentTime, 0.3, 'bandpass', 2400, 0.2, 500);
+  },
+
+  engage() {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    tone(c, t, 'sine', 110, 0.55, 0.5, 34);
+    noise(c, t, 0.45, 'lowpass', 2200, 0.4, 140);
+    neonSweep(c, t, 1800, 240, 0.38, 0.16);
+    chirp(c, t + 0.06, 440, 1760, 0.3, 0.12);
+    click(c, t + 0.02, 0.12);
+  },
+
+  /** Glassy break when a unit is eliminated. */
+  shatter() {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime;
+    noise(c, t, 0.16, 'highpass', 5200, 0.26);
+    [2600, 3300, 4100].forEach((f, i) => tone(c, t + i * 0.022, 'triangle', f, 0.12, 0.05, f * 0.6));
+  },
+
   packCharge() {
     const c = ac();
     if (!c) return;

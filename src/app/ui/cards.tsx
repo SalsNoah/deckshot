@@ -48,6 +48,16 @@ export function hasPortraitAnim(cardId: string): boolean {
   return OPERATOR_ANIM_SET.has(cardId);
 }
 
+/** Warm the image cache so revealed cards don't flip over to blank art. */
+export function preloadCardArt(ids: Iterable<string>) {
+  for (const id of new Set(ids)) {
+    if (!hasCardArt(id)) continue;
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = cardArtSrc(id);
+  }
+}
+
 /** Ordered list of operators that have baked motion GIFs. */
 export function portraitAnimIds(): readonly string[] {
   return OPERATOR_ANIM_IDS;
@@ -235,15 +245,16 @@ export const UnitTile = forwardRef<HTMLDivElement, UnitTileProps>(function UnitT
   const role = def.role ?? 'assault';
   const guard = hasAbility(u as unknown as Unit, 'guard');
   const hpPct = Math.max(0, Math.min(1, u.hp / u.maxHp));
+  const hpColor = hpPct > 0.6 ? '#6ee7a0' : hpPct > 0.3 ? '#ffc94d' : '#ff5a5a';
   return (
     <div
       ref={ref}
-      className={`unit ${mine ? 'mine' : 'enemy'} ${state ?? ''} ${u.flashed ? 'flashed' : ''} ${u.hp <= 0 ? 'dead' : ''}`}
+      className={`unit ${mine ? 'mine' : 'enemy'} ${state ?? ''} ${u.flashed ? 'flashed' : ''} ${u.stealth ? 'stealth' : ''} ${u.hp <= 0 ? 'dead' : ''}`}
       style={{ '--role': ROLE_COLOR[role] } as CSSProperties}
       onClick={onClick}
       data-uid={u.uid}
     >
-      <div className="unit-portrait"><Portrait cardId={u.cardId} size={30} flow={flow} /></div>
+      <div className="unit-portrait"><Portrait cardId={u.cardId} size={34} flow={flow} /></div>
       <div className="unit-body">
         <div className="unit-top">
           <span className="unit-name">{def.en}</span>
@@ -256,7 +267,10 @@ export const UnitTile = forwardRef<HTMLDivElement, UnitTileProps>(function UnitT
         </div>
         <StatRow atk={u.atk} hp={u.hp} aim={u.aim} base={{ atk: def.atk!, hp: u.maxHp, aim: def.aim! }} />
       </div>
-      <div className="unit-hpbar"><div style={{ width: `${hpPct * 100}%` }} /></div>
+      <div className="unit-hpbar" style={{ '--seg': Math.max(1, u.maxHp) } as CSSProperties}>
+        <i className="unit-hplag" style={{ width: `${hpPct * 100}%` }} />
+        <div style={{ width: `${hpPct * 100}%`, '--hpc': hpColor } as CSSProperties} />
+      </div>
       {badges && badges.length > 0 && (
         <div className="unit-badges">{badges.map((b, i) => <span key={i}>{b}</span>)}</div>
       )}
