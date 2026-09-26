@@ -462,15 +462,6 @@ export const sfx = {
     });
   },
 
-  /** Foil zip while the pack is torn; pitch climbs with progress (0–1). */
-  tearTick(progress: number) {
-    const c = ac();
-    if (!c) return;
-    const t = c.currentTime;
-    noise(c, t, 0.05, 'bandpass', 1800 + progress * 4200, 0.18, 900);
-    click(c, t, 0.05);
-  },
-
   /** Crackle + rising arpeggio when the omen light climbs to `tier` (1–3). */
   rankUp(tier: number) {
     const c = ac();

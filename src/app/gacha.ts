@@ -21,7 +21,7 @@ export const TICKET_PACKS: { id: string; tickets: number; label: string; priceLa
   { id: 't11', tickets: 11, label: 'チケット×11', priceLabel: '¥980' },
 ];
 
-const RARITY_WEIGHT: Record<Rarity, number> = {
+export const RARITY_WEIGHT: Record<Rarity, number> = {
   common: 70,
   rare: 22,
   epic: 6.5,
