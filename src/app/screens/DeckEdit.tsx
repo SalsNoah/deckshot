@@ -4,7 +4,7 @@ import {
   ALL_CARDS, DECK_SIZE, DECKS, MAX_COPIES, card, countCards, validateDeck, type CardType,
 } from '../../engine';
 import type { Profile } from '../profile';
-import { hasFlow, hasKira } from '../profile';
+import { hasFlow, hasKira, hasSign } from '../profile';
 import { CardDetail, HandCard } from '../ui/cards';
 import { cssUrl } from '../ui/assets';
 import { TYPE_LABEL } from '../ui/text';
@@ -143,6 +143,7 @@ export function DeckEdit({ profile, onChange, onBack }: {
                 cost={c.cost}
                 disabled={full && inDeck === 0}
                 kira={hasKira(profile, c.id)}
+                sign={hasSign(profile, c.id)}
                 flow={hasFlow(profile, c.id)}
                 onClick={() => (inDeck > 0 && full ? remove(c.id) : add(c.id))}
               />
@@ -176,7 +177,7 @@ export function DeckEdit({ profile, onChange, onBack }: {
       {peek && (
         <div className="modal-bg" onClick={() => setPeek(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <CardDetail cardId={peek} kira={hasKira(profile, peek)} flow={hasFlow(profile, peek)} />
+            <CardDetail cardId={peek} kira={hasKira(profile, peek)} sign={hasSign(profile, peek)} flow={hasFlow(profile, peek)} />
             <button className="btn ghost small" onClick={() => setPeek(null)}>閉じる</button>
           </div>
         </div>

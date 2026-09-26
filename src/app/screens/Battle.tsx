@@ -9,7 +9,7 @@ import {
 } from '../../engine';
 import { EMOTES, type EmoteId } from '../../net/protocol';
 import type { MatchConnection } from '../match';
-import { hasFlow, hasKira } from '../profile';
+import { hasFlow, hasKira, hasSign } from '../profile';
 import { sfx, vibrate, type ShotKind } from '../sfx';
 import {
   CalloutView, CutInView, FxView, HS_COLOR, REVEAL_FLIP_AT, REVEAL_FLIP_GAP, RevealStage, revealItems,
@@ -143,12 +143,14 @@ function describeAction(view: GameView, a: Action): { icon: string; label: strin
   }
 }
 
-export function Battle({ conn, onExit, onFinish, kiraOwned, flowOwned }: {
+export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned }: {
   conn: MatchConnection;
   onExit: () => void;
   onFinish: (r: MatchResult) => number | null;
   /** Player's owned kira operators — cosmetic on hand / detail. */
   kiraOwned?: Record<string, number>;
+  /** Player's owned signed operators — neon signature overlay. */
+  signOwned?: Record<string, number>;
   /** Player's owned motion-anim operators — portrait GIF swap. */
   flowOwned?: Record<string, number>;
 }) {
@@ -1264,7 +1266,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, flowOwned }: {
       {/* Selected card preview */}
       {phase === 'plan' && selectedCard && (
         <div className="preview">
-          <CardDetail cardId={selectedCard.cardId} compact kira={hasKira({ kiraOwned }, selectedCard.cardId)} flow={hasFlow({ flowOwned }, selectedCard.cardId)} />
+          <CardDetail cardId={selectedCard.cardId} compact kira={hasKira({ kiraOwned }, selectedCard.cardId)} sign={hasSign({ signOwned }, selectedCard.cardId)} flow={hasFlow({ flowOwned }, selectedCard.cardId)} />
           <div className="preview-actions">
             {selectedDef?.type === 'tactic' && selectedDef.target === 'none' ? (
               <button className="btn primary small" onClick={() => addAction({ t: 'tactic', hid: selectedCard.hid })}>使用する</button>
@@ -1288,6 +1290,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, flowOwned }: {
               cost={def.cost}
               used={used}
               kira={hasKira({ kiraOwned }, h.cardId)}
+              sign={hasSign({ signOwned }, h.cardId)}
               flow={hasFlow({ flowOwned }, h.cardId)}
               selected={sel?.kind === 'hand' && sel.hid === h.hid}
               disabled={!used && def.cost > credits}
@@ -1327,7 +1330,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, flowOwned }: {
       {detail && (
         <div className="modal-bg" onClick={() => setDetail(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <CardDetail cardId={detail.cardId} unit={detail.unit} kira={hasKira({ kiraOwned }, detail.cardId)} flow={hasFlow({ flowOwned }, detail.cardId)} />
+            <CardDetail cardId={detail.cardId} unit={detail.unit} kira={hasKira({ kiraOwned }, detail.cardId)} sign={hasSign({ signOwned }, detail.cardId)} flow={hasFlow({ flowOwned }, detail.cardId)} />
             {detail.movable && detail.unit && phase === 'plan' && (
               <div className="move-btns">
                 {[detail.unit.zone - 1, detail.unit.zone + 1].filter((z) => z >= 0 && z <= 2).map((z) => (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RANKS, matchRpDelta, rankOf } from './profile';
+import { RANKS, countCosmetics, matchRpDelta, rankOf } from './profile';
 
 describe('matchRpDelta', () => {
   it('awards 50 RP on a win at every rank', () => {
@@ -29,5 +29,19 @@ describe('matchRpDelta', () => {
   it('uses the rank before the match', () => {
     expect(rankOf(449).tier.id).toBe('silver');
     expect(rankOf(450).tier.id).toBe('gold');
+  });
+});
+
+describe('countCosmetics', () => {
+  it('splits gold-only and signed copies without double-counting', () => {
+    expect(countCosmetics({
+      kiraOwned: { rookie: 3, ghost: 1, ace: 2 },
+      signOwned: { rookie: 1, ace: 2 },
+    })).toEqual({ kira: 3, sign: 3 });
+  });
+
+  it('returns zeros when empty', () => {
+    expect(countCosmetics({})).toEqual({ kira: 0, sign: 0 });
+    expect(countCosmetics(null)).toEqual({ kira: 0, sign: 0 });
   });
 });

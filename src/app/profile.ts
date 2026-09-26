@@ -1,4 +1,5 @@
-import { DECKS, ownedFromList, type Difficulty, validateDeck } from '../engine';
+import { DECKS, card, ownedFromList, type Difficulty, validateDeck } from '../engine';
+import { FLOW_UNLOCK_MATCHES } from './gacha';
 
 export interface Profile {
   name: string;
@@ -17,8 +18,12 @@ export interface Profile {
   owned: Record<string, number>;
   /** Owned kira (shiny) operator copies. Cosmetic; still counts via `owned`. */
   kiraOwned: Record<string, number>;
-  /** Owned motion-animated operator copies. Cosmetic; still counts via `owned`. */
+  /** Owned signature operator copies. Cosmetic; still counts via `owned`. */
+  signOwned: Record<string, number>;
+  /** Owned motion-animated operator copies. Unlocked by battle use, not gacha. */
   flowOwned: Record<string, number>;
+  /** Matches played with each operator (deck inclusion). */
+  operatorUses: Record<string, number>;
   /** Paid gacha tickets (1 ticket = 1 pull of 3 cards). */
   gachaTickets: number;
   /** Local calendar date `YYYY-MM-DD` of last free gacha, or null. */
@@ -26,6 +31,15 @@ export interface Profile {
   difficulty: Difficulty;
   sound: boolean;
   seenHowTo: boolean;
+}
+
+function countMap(raw: unknown): Record<string, number> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Record<string, number> = {};
+  for (const [id, n] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof n === 'number' && n > 0) out[id] = Math.floor(n);
+  }
+  return out;
 }
 
 const KEY = 'deckshot.profile.v1';
@@ -50,7 +64,9 @@ const DEFAULT: Profile = {
   deck: STARTER.deck,
   owned: STARTER.owned,
   kiraOwned: {},
+  signOwned: {},
   flowOwned: {},
+  operatorUses: {},
   gachaTickets: 3,
   lastFreeGacha: null,
   difficulty: 'normal',
@@ -63,22 +79,10 @@ function migrate(raw: Partial<Profile> & Record<string, unknown>): Profile {
     ...DEFAULT,
     ...raw,
     owned: raw.owned && typeof raw.owned === 'object' ? { ...raw.owned } : { ...DEFAULT.owned },
-    kiraOwned: (() => {
-      if (!raw.kiraOwned || typeof raw.kiraOwned !== 'object') return {};
-      const out: Record<string, number> = {};
-      for (const [id, n] of Object.entries(raw.kiraOwned as Record<string, unknown>)) {
-        if (typeof n === 'number' && n > 0) out[id] = Math.floor(n);
-      }
-      return out;
-    })(),
-    flowOwned: (() => {
-      if (!raw.flowOwned || typeof raw.flowOwned !== 'object') return {};
-      const out: Record<string, number> = {};
-      for (const [id, n] of Object.entries(raw.flowOwned as Record<string, unknown>)) {
-        if (typeof n === 'number' && n > 0) out[id] = Math.floor(n);
-      }
-      return out;
-    })(),
+    kiraOwned: countMap(raw.kiraOwned),
+    signOwned: countMap(raw.signOwned),
+    flowOwned: countMap(raw.flowOwned),
+    operatorUses: countMap(raw.operatorUses),
     deck: Array.isArray(raw.deck) ? [...raw.deck] : [...DEFAULT.deck],
     gachaTickets: typeof raw.gachaTickets === 'number' ? raw.gachaTickets : DEFAULT.gachaTickets,
     lastFreeGacha: typeof raw.lastFreeGacha === 'string' ? raw.lastFreeGacha : null,
@@ -116,7 +120,9 @@ export function loadProfile(): Profile {
     name: `Player${Math.floor(1000 + Math.random() * 9000)}`,
     owned: { ...DEFAULT.owned },
     kiraOwned: {},
+    signOwned: {},
     flowOwned: {},
+    operatorUses: {},
     deck: [...DEFAULT.deck],
   };
 }
@@ -126,9 +132,62 @@ export function hasKira(p: { kiraOwned?: Record<string, number> } | null | undef
   return (p?.kiraOwned?.[cardId] ?? 0) > 0;
 }
 
+/** True when the player owns at least one signed copy of this operator. */
+export function hasSign(p: { signOwned?: Record<string, number> } | null | undefined, cardId: string): boolean {
+  return (p?.signOwned?.[cardId] ?? 0) > 0;
+}
+
 /** True when the player owns at least one motion-animated copy of this operator. */
 export function hasFlow(p: { flowOwned?: Record<string, number> } | null | undefined, cardId: string): boolean {
   return (p?.flowOwned?.[cardId] ?? 0) > 0;
+}
+
+function sumMap(m: Record<string, number> | undefined): number {
+  let n = 0;
+  if (!m) return 0;
+  for (const v of Object.values(m)) if (v > 0) n += Math.floor(v);
+  return n;
+}
+
+/**
+ * Mutually exclusive cosmetic copy counts among owned operators:
+ * - `kira`: gold-frame only (no signature)
+ * - `sign`: gold-frame + signature
+ */
+export function countCosmetics(p: {
+  kiraOwned?: Record<string, number>;
+  signOwned?: Record<string, number>;
+} | null | undefined): { kira: number; sign: number } {
+  const kiraOwned = p?.kiraOwned ?? {};
+  const signOwned = p?.signOwned ?? {};
+  const sign = sumMap(signOwned);
+  let kira = 0;
+  const ids = new Set([...Object.keys(kiraOwned), ...Object.keys(signOwned)]);
+  for (const id of ids) {
+    const k = Math.max(0, Math.floor(kiraOwned[id] ?? 0));
+    const s = Math.max(0, Math.floor(signOwned[id] ?? 0));
+    kira += Math.max(0, k - s);
+  }
+  return { kira, sign };
+}
+
+/**
+ * Count one match for every unique operator in the deck.
+ * At FLOW_UNLOCK_MATCHES uses, unlock portrait animation for that operator.
+ */
+export function applyOperatorMatchUses(
+  profile: Pick<Profile, 'operatorUses' | 'flowOwned'>,
+  deck: string[],
+): Pick<Profile, 'operatorUses' | 'flowOwned'> {
+  const operatorUses = { ...profile.operatorUses };
+  const flowOwned = { ...profile.flowOwned };
+  for (const id of new Set(deck)) {
+    if (card(id).type !== 'operator') continue;
+    const n = (operatorUses[id] ?? 0) + 1;
+    operatorUses[id] = n;
+    if (n >= FLOW_UNLOCK_MATCHES && (flowOwned[id] ?? 0) < 1) flowOwned[id] = 1;
+  }
+  return { operatorUses, flowOwned };
 }
 
 

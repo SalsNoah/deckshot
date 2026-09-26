@@ -2,8 +2,9 @@ import { ChevronRight, FastForward, Gift, Layers, Ticket } from 'lucide-react';
 import { useState, type CSSProperties } from 'react';
 import type { Rarity } from '../../engine';
 import {
-  canFreeGacha, FLOW_CHANCE, freeGachaDate, GACHA_MULTI_PACKS, GACHA_MULTI_TICKETS, GACHA_PULL_SIZE,
-  grantCards, grantFlow, grantKira, KIRA_CHANCE, pullGacha, RARITY_WEIGHT, TICKET_PACKS,
+  canFreeGacha, freeGachaDate, GACHA_MULTI_PACKS, GACHA_MULTI_TICKETS, GACHA_PULL_SIZE,
+  grantCards, grantKira, grantSign, KIRA_ONLY_CHANCE, pullGacha, RARITY_WEIGHT, SIGN_CHANCE,
+  TICKET_PACKS, FLOW_UNLOCK_MATCHES,
 } from '../gacha';
 import type { Profile } from '../profile';
 import { unlockAudio } from '../sfx';
@@ -31,7 +32,7 @@ export function Gacha({ profile, onChange, onBack }: {
   const [opening, setOpening] = useState<{
     cards: string[];
     kira: boolean[];
-    flow: boolean[];
+    sign: boolean[];
     fresh: boolean[];
     mode: PullMode;
     key: number;
@@ -69,16 +70,16 @@ export function Gacha({ profile, onChange, onBack }: {
     const pulled = pullGacha(Math.random, packs);
     const cards = pulled.map((p) => p.cardId);
     const kira = pulled.map((p) => p.kira);
-    const flow = pulled.map((p) => p.flow);
+    const sign = pulled.map((p) => p.sign);
     const fresh = cards.map((id, i) => !profile.owned[id] && cards.indexOf(id) === i);
     onChange({
       owned: grantCards(profile.owned, pulled),
       kiraOwned: grantKira(profile.kiraOwned ?? {}, pulled),
-      flowOwned: grantFlow(profile.flowOwned ?? {}, pulled),
+      signOwned: grantSign(profile.signOwned ?? {}, pulled),
       gachaTickets: profile.gachaTickets - ticketCost,
       lastFreeGacha: mode === 'free' ? freeGachaDate() : profile.lastFreeGacha,
     });
-    setOpening({ cards, kira, flow, fresh, mode, key: Date.now() });
+    setOpening({ cards, kira, sign, fresh, mode, key: Date.now() });
   };
 
   if (opening) {
@@ -89,7 +90,7 @@ export function Gacha({ profile, onChange, onBack }: {
         key={opening.key}
         cards={opening.cards}
         kira={opening.kira}
-        flow={opening.flow}
+        sign={opening.sign}
         fresh={opening.fresh}
         quick={quick}
         onClose={() => setOpening(null)}
@@ -131,7 +132,8 @@ export function Gacha({ profile, onChange, onBack }: {
               {label}<b>{pct(RARITY_WEIGHT[r] / totalWeight)}</b>
             </span>
           ))}
-          <p>オペレーターは KIRA {pct(KIRA_CHANCE)}・ANIM {pct(FLOW_CHANCE)}</p>
+          <p>オペレーター枠：通常 {pct(1 - KIRA_ONLY_CHANCE - SIGN_CHANCE)}・金枠 {pct(KIRA_ONLY_CHANCE)}・金枠+サイン {pct(SIGN_CHANCE)}</p>
+          <p>アニメ化はデッキで{FLOW_UNLOCK_MATCHES}試合使用で解放</p>
         </div>
       </section>
 
@@ -154,7 +156,7 @@ export function Gacha({ profile, onChange, onBack }: {
             onClick={() => runPull('ticket')}
           >
             <span className="hud-ico"><Ticket size={20} /></span>
-            <span className="hud-txt"><b>SINGLE</b><small>チケット1枚</small></span>
+            <span className="hud-txt"><b>1-PULL</b><small>チケット1枚</small></span>
           </button>
           <button
             className="hud-btn hud-main gacha-multi"
@@ -167,20 +169,19 @@ export function Gacha({ profile, onChange, onBack }: {
           </button>
         </div>
         <button className={`gacha-quick${quick ? ' on' : ''}`} onClick={toggleQuick} aria-pressed={quick}>
-          <FastForward size={16} />
-          <span><b>演出スキップ</b><small>{quick ? '封の光だけ見て、すぐ結果へ' : 'OFF：1枚ずつめくって開封'}</small></span>
+          <FastForward size={14} />
+          スキップ開封
           <i className="gacha-switch" />
         </button>
       </div>
 
       <section className="gacha-shop">
-        <h3><Ticket size={16} /> 課金アイテム（デモ）</h3>
+        <h3>チケット購入（デモ）</h3>
         <p className="gacha-shop-note">チケットを使うと無料枠とは別に何度でも引けます。購入はデモ動作です。</p>
-        <div className="ticket-packs">
+        <div className="gacha-shop-row">
           {TICKET_PACKS.map((p) => (
-            <button key={p.id} className="ticket-pack" style={{ '--a': '#ffb547' } as CSSProperties} onClick={() => buyTickets(p.tickets, p.label)}>
-              <b>{p.label}</b>
-              <span>{p.priceLabel}</span>
+            <button key={p.id} className="btn" onClick={() => buyTickets(p.tickets, p.label)}>
+              {p.label}<small>{p.priceLabel}</small>
             </button>
           ))}
         </div>

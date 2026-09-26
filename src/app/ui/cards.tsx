@@ -66,6 +66,20 @@ export function portraitAnimIds(): readonly string[] {
   return OPERATOR_ANIM_IDS;
 }
 
+/** Neon white-pen signature overlay (black backdrop screened out). */
+export function SignatureMark({ cardId, className = '' }: { cardId: string; className?: string }) {
+  return (
+    <img
+      className={`card-sign ${className}`.trim()}
+      src={publicAsset(`signatures/${cardId}.png`)}
+      alt=""
+      draggable={false}
+      decoding="async"
+      aria-hidden
+    />
+  );
+}
+
 /** Neon card portrait. Animation-rare swaps the still for a generated looping animation. */
 export function Portrait({ cardId, size = 56, flow }: { cardId: string; size?: number; flow?: boolean }) {
   const def = card(cardId);
@@ -123,7 +137,7 @@ export function StatRow({ atk, hp, aim, base, size = 'sm' }: {
   );
 }
 
-export function HandCard({ cardId, cost, selected, disabled, used, kira, flow, artSize = 140, onClick }: {
+export function HandCard({ cardId, cost, selected, disabled, used, kira, sign, flow, artSize = 140, onClick }: {
   cardId: string;
   cost: number;
   selected?: boolean;
@@ -131,7 +145,9 @@ export function HandCard({ cardId, cost, selected, disabled, used, kira, flow, a
   used?: boolean;
   /** Gold-border glossy variant (operators). */
   kira?: boolean;
-  /** Portrait motion animation (rare gacha cosmetic). */
+  /** Neon signature overlay (operators). */
+  sign?: boolean;
+  /** Portrait motion animation (battle-unlock cosmetic). */
   flow?: boolean;
   /** Rendered portrait size; picks the motion loop resolution. */
   artSize?: number;
@@ -140,9 +156,10 @@ export function HandCard({ cardId, cost, selected, disabled, used, kira, flow, a
   const def = card(cardId);
   const color = cardColor(cardId);
   const art = hasCardArt(cardId);
+  const showSign = Boolean(sign && def.type === 'operator');
   return (
     <button
-      className={`hcard ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''} ${used ? 'used' : ''} ${kira ? 'kira' : ''} ${flow ? 'flow' : ''} type-${def.type} ${art ? 'has-art' : ''}`}
+      className={`hcard ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''} ${used ? 'used' : ''} ${kira ? 'kira' : ''} ${showSign ? 'sign' : ''} ${flow ? 'flow' : ''} type-${def.type} ${art ? 'has-art' : ''}`}
       style={{ '--c': color, '--r': RARITY_COLOR[def.rarity] } as CSSProperties}
       onClick={onClick}
     >
@@ -150,6 +167,7 @@ export function HandCard({ cardId, cost, selected, disabled, used, kira, flow, a
         {art ? <Portrait cardId={cardId} size={artSize} flow={flow} /> : <CardIcon cardId={cardId} size={36} />}
       </div>
       <div className="hcard-shade" aria-hidden />
+      {showSign && <SignatureMark cardId={cardId} className="hcard-sign" />}
       {kira && <div className="hcard-kira-foil" aria-hidden />}
       <div className="hcard-cost">{cost}</div>
       <div className="hcard-footer">
@@ -165,11 +183,12 @@ export function HandCard({ cardId, cost, selected, disabled, used, kira, flow, a
   );
 }
 
-export function CardDetail({ cardId, unit, compact, kira, flow }: {
+export function CardDetail({ cardId, unit, compact, kira, sign, flow }: {
   cardId: string;
   unit?: UnitSnap;
   compact?: boolean;
   kira?: boolean;
+  sign?: boolean;
   flow?: boolean;
 }) {
   const def = card(cardId);
@@ -178,12 +197,14 @@ export function CardDetail({ cardId, unit, compact, kira, flow }: {
   const extra = [unit?.weapon, unit?.armor].filter(Boolean) as string[];
   const isOp = def.type === 'operator';
   const art = hasCardArt(cardId);
+  const showSign = Boolean(sign && isOp);
   return (
-    <div className={`cdetail ${compact ? 'compact' : ''} type-${def.type} ${art ? 'has-art' : ''} ${kira ? 'kira' : ''}`} style={{ '--c': color, '--r': RARITY_COLOR[def.rarity] } as CSSProperties}>
+    <div className={`cdetail ${compact ? 'compact' : ''} type-${def.type} ${art ? 'has-art' : ''} ${kira ? 'kira' : ''} ${showSign ? 'sign' : ''}`} style={{ '--c': color, '--r': RARITY_COLOR[def.rarity] } as CSSProperties}>
       {art && (
         <div className="cdetail-hero" aria-hidden>
           <Portrait cardId={cardId} size={compact ? 220 : 360} flow={flow} />
           <div className="cdetail-hero-shade" />
+          {showSign && <SignatureMark cardId={cardId} className="cdetail-sign" />}
           {kira && <div className="cdetail-kira-foil" aria-hidden />}
         </div>
       )}

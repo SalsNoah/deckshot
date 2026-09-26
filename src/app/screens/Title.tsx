@@ -1,9 +1,10 @@
 import { BookOpen, Bot, ChevronRight, Dices, Layers, Pencil, Sparkles, Volume2, VolumeX, Wifi, LayoutGrid } from 'lucide-react';
 import { useState, type CSSProperties } from 'react';
 import { canFreeGacha } from '../gacha';
-import { isDeckReady, rankOf, type Profile } from '../profile';
+import { countCosmetics, isDeckReady, rankOf, type Profile } from '../profile';
 import { unlockAudio } from '../sfx';
 import { cssUrl } from '../ui/assets';
+import { KiraShineIcon, SignAIcon } from '../ui/icons';
 import { RankBadge } from '../ui/RankBadge';
 
 export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, onDeckEdit, onGacha, onAnimPreview }: {
@@ -23,6 +24,7 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
   const games = profile.wins + profile.losses + profile.draws;
   const ready = isDeckReady(profile);
   const freeGacha = canFreeGacha(profile.lastFreeGacha);
+  const cosmetics = countCosmetics(profile);
 
   const commitName = () => {
     const n = name.trim().slice(0, 12);
@@ -102,6 +104,10 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
           <button className="hud-btn hud-tile" style={{ '--a': '#8fb8ff' } as CSSProperties} onClick={onCards}>
             <Layers size={18} className="hud-tile-ico" />
             <b>ARSENAL</b><small>カード一覧</small>
+            <span className="cosmetic-counts tile" aria-label={`金枠 ${cosmetics.kira}、サイン ${cosmetics.sign}`}>
+              <span className="cosmetic-chip kira"><KiraShineIcon size={11} /><b>{cosmetics.kira}</b></span>
+              <span className="cosmetic-chip sign"><SignAIcon size={11} /><b>{cosmetics.sign}</b></span>
+            </span>
           </button>
           <button className="hud-btn hud-tile" style={{ '--a': '#c7d2de' } as CSSProperties} onClick={onHowTo}>
             <BookOpen size={18} className="hud-tile-ico" />
@@ -109,7 +115,7 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
           </button>
           <button className="hud-btn hud-tile" style={{ '--a': '#e8a0ff' } as CSSProperties} onClick={onAnimPreview}>
             <Sparkles size={18} className="hud-tile-ico" />
-            <b>ANIM</b><small>アニメプレビュー</small>
+            <b>PREVIEW</b><small>レアプレビュー</small>
           </button>
         </div>
       </div>

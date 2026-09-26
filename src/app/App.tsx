@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { DECKS } from '../engine';
 import { LocalCpuMatch, type MatchConnection } from './match';
 import type { OnlineMatch } from './online';
-import { isDeckReady, loadProfile, matchRpDelta, saveProfile, type Profile } from './profile';
+import { isDeckReady, loadProfile, matchRpDelta, saveProfile, applyOperatorMatchUses, type Profile } from './profile';
 import { setBgm, setSoundEnabled, unlockAudio } from './sfx';
 import { Battle, type MatchResult } from './screens/Battle';
 import { Cards } from './screens/Cards';
@@ -76,8 +76,10 @@ export function App() {
     const draw = r.winner === 'draw';
     const rp = matchRpDelta(cur.rp, draw ? 'draw' : won ? 'win' : 'loss');
     const ticketBonus = won && Math.random() < 0.15 ? 1 : 0;
+    const progress = applyOperatorMatchUses(cur, cur.deck);
     const next: Profile = {
       ...cur,
+      ...progress,
       rp: Math.max(0, cur.rp + rp),
       wins: cur.wins + (won ? 1 : 0),
       losses: cur.losses + (!won && !draw ? 1 : 0),
@@ -148,7 +150,7 @@ export function App() {
         />
       )}
       {screen.name === 'battle' && (
-        <Battle key={screen.key} conn={screen.conn} onExit={exitBattle} onFinish={onFinish} kiraOwned={profile.kiraOwned} flowOwned={profile.flowOwned} />
+        <Battle key={screen.key} conn={screen.conn} onExit={exitBattle} onFinish={onFinish} kiraOwned={profile.kiraOwned} signOwned={profile.signOwned} flowOwned={profile.flowOwned} />
       )}
       {screen.name === 'howto' && (
         <HowTo onBack={() => setScreen(screen.next ?? { name: 'title' })} />

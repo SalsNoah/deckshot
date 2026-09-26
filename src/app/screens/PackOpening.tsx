@@ -32,16 +32,16 @@ const CHARGE_MS = { epic: 360, legend: 780 };
 const AUTO_CHARGE_MS = { epic: 0, legend: 480 };
 const AUTO_GAP = 260;
 const POP_MS = 700;
-const SPOT_MS = { legend: 2600, flow: 2000 };
+const SPOT_MS = { legend: 2600, sign: 2000 };
 const TAP_GUARD = 380;
 const AGAIN_GUARD = 450;
 
-export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain, againLabel }: {
+export function PackOpening({ cards, kira, sign, fresh, quick, onClose, onAgain, againLabel }: {
   cards: string[];
   /** Per slot: kira result already decided at pull time (operators only). */
   kira: boolean[];
-  /** Per slot: motion cosmetic already decided at pull time. */
-  flow: boolean[];
+  /** Per slot: signature cosmetic already decided at pull time. */
+  sign: boolean[];
   /** Per slot: true when this pull is the player's first copy. */
   fresh: boolean[];
   /** Jump straight from the seam hint to the results. */
@@ -137,7 +137,7 @@ export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain,
     setSpot(i);
     if (rarities[i] === 'legend') {
       sfx.legendBurst();
-      if (flow[i]) later(520, () => sfx.motion());
+      if (sign[i]) later(520, () => sfx.motion());
     } else {
       sfx.motion();
     }
@@ -170,7 +170,7 @@ export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain,
       setPop(i);
       later(POP_MS, () => setPop((p) => (p === i ? null : p)));
     }
-    if (flow[i]) {
+    if (sign[i]) {
       spotQueue.current.push(i);
       later(r === 'epic' ? 560 : 220, pumpSpot);
     }
@@ -207,7 +207,7 @@ export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain,
 
   const afterWave = (low: number[]) => {
     setWave(false);
-    spotQueue.current.push(...low.filter((i) => flow[i]));
+    spotQueue.current.push(...low.filter((i) => sign[i]));
     pumpSpot();
   };
 
@@ -242,8 +242,8 @@ export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain,
 
   /** Best card nobody has seen yet, for the one spotlight a skip still shows. */
   const pickStar = (unseen: number[]) => {
-    const score = (i: number) => (rarities[i] === 'legend' ? 4 : 0) + (flow[i] ? 2 : 0) + (kira[i] ? 1 : 0);
-    const star = unseen.filter((i) => rarities[i] === 'legend' || flow[i]).sort((a, b) => score(b) - score(a))[0];
+    const score = (i: number) => (rarities[i] === 'legend' ? 4 : 0) + (sign[i] ? 2 : 0) + (kira[i] ? 1 : 0);
+    const star = unseen.filter((i) => rarities[i] === 'legend' || sign[i]).sort((a, b) => score(b) - score(a))[0];
     return star ?? null;
   };
 
@@ -288,7 +288,7 @@ export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain,
     flipIdx(low);
     if (low.some((i) => kira[i])) sfx.kira();
     if (pending !== null) reveal(pending);
-    spotQueue.current.push(...low.filter((i) => flow[i]));
+    spotQueue.current.push(...low.filter((i) => sign[i]));
     pumpSpot();
   };
 
@@ -364,7 +364,7 @@ export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain,
       const t = window.setTimeout(() => {
         spotRef.current = null;
         setSpot(null);
-      }, rarities[spot] === 'legend' ? SPOT_MS.legend : SPOT_MS.flow);
+      }, rarities[spot] === 'legend' ? SPOT_MS.legend : SPOT_MS.sign);
       return () => window.clearTimeout(t);
     }
     if (!spotQueue.current.length) return;
@@ -385,13 +385,13 @@ export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain,
   const summary = useMemo(() => {
     const count: Record<Rarity, number> = { common: 0, rare: 0, epic: 0, legend: 0 };
     rarities.forEach((r) => { count[r] += 1; });
-    const star = (i: number) => RANK[rarities[i]] >= 2 || flow[i];
+    const star = (i: number) => RANK[rarities[i]] >= 2 || sign[i];
     const best = cards.map((_, i) => i).filter(star).sort((a, b) =>
-      RANK[rarities[b]] - RANK[rarities[a]] || Number(flow[b]) - Number(flow[a]) || Number(kira[b]) - Number(kira[a]) || a - b);
+      RANK[rarities[b]] - RANK[rarities[a]] || Number(sign[b]) - Number(sign[a]) || Number(kira[b]) - Number(kira[a]) || a - b);
     const groups = new Map<string, { i: number; n: number; fresh: boolean }>();
     cards.forEach((id, i) => {
       if (star(i)) return;
-      const key = `${id}|${kira[i] ? 1 : 0}`;
+      const key = `${id}|${kira[i] ? 1 : 0}|${sign[i] ? 1 : 0}`;
       const g = groups.get(key);
       if (g) {
         g.n += 1;
@@ -406,9 +406,9 @@ export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain,
       count, best, rest,
       news: fresh.filter(Boolean).length,
       kiras: kira.filter(Boolean).length,
-      anims: flow.filter(Boolean).length,
+      signs: sign.filter(Boolean).length,
     };
-  }, [cards, rarities, kira, flow, fresh]);
+  }, [cards, rarities, kira, sign, fresh]);
 
   const allOpen = flipped.every(Boolean);
   const accent = phase === 'ready' ? HINT_COLOR.low : HINT_COLOR[seam];
@@ -425,7 +425,7 @@ export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain,
     <>
       <span style={{ color: RARITY_COLOR[rarities[i]] }}>{LABEL[rarities[i]]}</span>
       {kira[i] && <em className="tag-kira">KIRA</em>}
-      {flow[i] && <em className="tag-anim">ANIM</em>}
+      {sign[i] && <em className="tag-sign">SIGN</em>}
       {fresh[i] && <em>NEW</em>}
     </>
   );
@@ -492,7 +492,7 @@ export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain,
                 'pack-card', `r-${r}`,
                 hi && 'hl',
                 kira[i] && 'kira',
-                flow[i] && 'anim',
+                sign[i] && 'sign',
                 flipped[i] && 'flipped',
                 charging === i && 'charging',
                 charging === i && cracked && 'cracked',
@@ -520,7 +520,7 @@ export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain,
                           cardId={id}
                           cost={card(id).cost}
                           kira={kira[i]}
-                          flow={flow[i]}
+                          sign={sign[i]}
                           artSize={multi ? 64 : 110}
                           onClick={(e) => { e.stopPropagation(); setPeek(i); }}
                         />
@@ -545,11 +545,11 @@ export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain,
                 </span>
               ))}
             </div>
-            {(summary.news > 0 || summary.kiras > 0 || summary.anims > 0) && (
+            {(summary.news > 0 || summary.kiras > 0 || summary.signs > 0) && (
               <div className="pack-sum-extra">
                 {summary.news > 0 && <em>NEW ×{summary.news}</em>}
                 {summary.kiras > 0 && <em className="tag-kira">KIRA ×{summary.kiras}</em>}
-                {summary.anims > 0 && <em className="tag-anim">ANIM ×{summary.anims}</em>}
+                {summary.signs > 0 && <em className="tag-sign">SIGN ×{summary.signs}</em>}
               </div>
             )}
             <div className="pack-sum-scroll">
@@ -561,7 +561,7 @@ export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain,
                       className={`sum-card big r-${rarities[i]}${kira[i] ? ' kira' : ''}`}
                       style={{ '--r': RARITY_COLOR[rarities[i]], '--k': k } as CSSProperties}
                     >
-                      <HandCard cardId={cards[i]} cost={card(cards[i]).cost} kira={kira[i]} flow={flow[i]} artSize={96} onClick={() => setPeek(i)} />
+                      <HandCard cardId={cards[i]} cost={card(cards[i]).cost} kira={kira[i]} sign={sign[i]} artSize={96} onClick={() => setPeek(i)} />
                       <div className="sum-card-tags">{tags(i)}</div>
                     </div>
                   ))}
@@ -574,7 +574,7 @@ export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain,
                     className={`sum-card r-${rarities[g.i]}${kira[g.i] ? ' kira' : ''}`}
                     style={{ '--r': RARITY_COLOR[rarities[g.i]], '--k': Math.min(summary.best.length + k, 18) } as CSSProperties}
                   >
-                    <HandCard cardId={cards[g.i]} cost={card(cards[g.i]).cost} kira={kira[g.i]} artSize={64} onClick={() => setPeek(g.i)} />
+                    <HandCard cardId={cards[g.i]} cost={card(cards[g.i]).cost} kira={kira[g.i]} sign={sign[g.i]} artSize={64} onClick={() => setPeek(g.i)} />
                     {g.n > 1 && <b className="sum-count">×{g.n}</b>}
                     {g.fresh && <em className="sum-new">NEW</em>}
                   </div>
@@ -618,19 +618,19 @@ export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain,
       </div>
 
       {spot !== null && (
-        <div className={`pack-spotlight r-${rarities[spot] === 'legend' ? 'legend' : 'flow'}`} onClick={closeSpot}>
+        <div className={`pack-spotlight r-${rarities[spot] === 'legend' ? 'legend' : 'sign'}`} onClick={closeSpot}>
           <div className="pack-spot-rays" />
           <div className="pack-spot-flash" />
           <div className="pack-spot-card">
-            <HandCard cardId={cards[spot]} cost={card(cards[spot]).cost} kira={kira[spot]} flow={flow[spot]} artSize={260} />
+            <HandCard cardId={cards[spot]} cost={card(cards[spot]).cost} kira={kira[spot]} sign={sign[spot]} artSize={260} />
           </div>
           <div className="pack-spot-title">
-            <b>{rarities[spot] === 'legend' ? 'LEGEND' : 'ANIMATED'}</b>
+            <b>{rarities[spot] === 'legend' ? 'LEGEND' : 'SIGNED'}</b>
             <span>{card(cards[spot]).en}</span>
             <div className="pack-spot-tags">
               {rarities[spot] !== 'legend' && <em className="tag-rarity" style={{ '--r': RARITY_COLOR[rarities[spot]] } as CSSProperties}>{LABEL[rarities[spot]]}</em>}
               {kira[spot] && <em className="tag-kira">KIRA</em>}
-              {flow[spot] && <em className="tag-anim">ANIM</em>}
+              {sign[spot] && <em className="tag-sign">SIGN</em>}
               {fresh[spot] && <em>NEW</em>}
             </div>
             <small className="pack-spot-hint">タップで閉じる</small>
@@ -641,7 +641,7 @@ export function PackOpening({ cards, kira, flow, fresh, quick, onClose, onAgain,
       {peek !== null && (
         <div className="modal-bg" onClick={() => setPeek(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <CardDetail cardId={cards[peek]} kira={kira[peek]} flow={flow[peek]} />
+            <CardDetail cardId={cards[peek]} kira={kira[peek]} sign={sign[peek]} />
             <button className="btn ghost small" onClick={() => setPeek(null)}>閉じる</button>
           </div>
         </div>

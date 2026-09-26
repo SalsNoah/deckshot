@@ -8,11 +8,19 @@ export const GACHA_MULTI_PACKS = 10;
 /** Ticket cost for a multi pull (1 ticket per pack). */
 export const GACHA_MULTI_TICKETS = GACHA_MULTI_PACKS;
 
-/** Operator pulls become kira (shiny) at this rate. Rolled silently. */
-export const KIRA_CHANCE = 0.1;
+/**
+ * Operator cosmetic rates (mutually exclusive bands):
+ * - normal 90%
+ * - gold frame (kira) 9%
+ * - gold frame + signature 1%
+ */
+export const KIRA_ONLY_CHANCE = 0.09;
+export const SIGN_CHANCE = 0.01;
+/** Combined gold-frame rate (kira only + kira with sign). */
+export const KIRA_CHANCE = KIRA_ONLY_CHANCE + SIGN_CHANCE;
 
-/** Operator pulls get analyzed portrait animation at this rate. Rolled silently. */
-export const FLOW_CHANCE = 0.01;
+/** Matches needed with an operator to unlock portrait animation. */
+export const FLOW_UNLOCK_MATCHES = 10;
 
 /** One ticket = one 3-card pull. */
 export const TICKET_PACKS: { id: string; tickets: number; label: string; priceLabel: string }[] = [
@@ -38,10 +46,10 @@ for (const c of ALL_CARDS) BY_RARITY[c.rarity].push(c.id);
 
 export interface PullResult {
   cardId: string;
-  /** True when this pull is a kira operator. */
+  /** True when this pull is a kira (gold-frame) operator. */
   kira: boolean;
-  /** True when this pull has motion-analyzed portrait animation. */
-  flow: boolean;
+  /** True when this pull also has a signature (implies kira). */
+  sign: boolean;
 }
 
 function todayKey(d = new Date()): string {
@@ -85,15 +93,22 @@ export function canRollKira(cardId: string): boolean {
   return canRollOperatorCosmetic(cardId);
 }
 
+/** Roll operator cosmetics: 90% none / 9% kira / 1% kira+sign. */
+export function rollOperatorCosmetic(rng: () => number): { kira: boolean; sign: boolean } {
+  const roll = rng();
+  if (roll < SIGN_CHANCE) return { kira: true, sign: true };
+  if (roll < KIRA_CHANCE) return { kira: true, sign: false };
+  return { kira: false, sign: false };
+}
+
 /** Draw `packs` × GACHA_PULL_SIZE cards. Cosmetics are rolled silently for operators. */
 export function pullGacha(rng: () => number = Math.random, packs = 1): PullResult[] {
   const count = Math.max(1, Math.floor(packs)) * GACHA_PULL_SIZE;
   return Array.from({ length: count }, () => {
     const cardId = pickCard(rng);
-    const op = canRollOperatorCosmetic(cardId);
-    const kira = op && rng() < KIRA_CHANCE;
-    const flow = op && rng() < FLOW_CHANCE;
-    return { cardId, kira, flow };
+    if (!canRollOperatorCosmetic(cardId)) return { cardId, kira: false, sign: false };
+    const { kira, sign } = rollOperatorCosmetic(rng);
+    return { cardId, kira, sign };
   });
 }
 
@@ -117,11 +132,11 @@ export function grantKira(kiraOwned: Record<string, number>, pulled: PullResult[
   return next;
 }
 
-/** Merge motion-anim results into a flow-owned map (operators only). */
-export function grantFlow(flowOwned: Record<string, number>, pulled: PullResult[]): Record<string, number> {
-  const next = { ...flowOwned };
+/** Merge signature results into a sign-owned map (operators only). */
+export function grantSign(signOwned: Record<string, number>, pulled: PullResult[]): Record<string, number> {
+  const next = { ...signOwned };
   for (const p of pulled) {
-    if (!p.flow) continue;
+    if (!p.sign) continue;
     next[p.cardId] = (next[p.cardId] ?? 0) + 1;
   }
   return next;

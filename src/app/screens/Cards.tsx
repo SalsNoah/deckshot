@@ -1,9 +1,9 @@
-import { useState, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { ALL_CARDS, STREAK_ORDER, STREAKS, ZONE_MODS, type CardType } from '../../engine';
-import { hasFlow, hasKira, type Profile } from '../profile';
+import { countCosmetics, hasFlow, hasKira, hasSign, type Profile } from '../profile';
 import { CardDetail, HandCard } from '../ui/cards';
 import { cssUrl } from '../ui/assets';
-import { StreakIcon } from '../ui/icons';
+import { KiraShineIcon, SignAIcon, StreakIcon } from '../ui/icons';
 import { zoneVisual } from '../ui/zoneArt';
 
 const TABS: { id: CardType | 'other'; name: string }[] = [
@@ -18,13 +18,26 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
   const [peek, setPeek] = useState<string | null>(null);
   const list = ALL_CARDS.filter((c) => c.type === tab).sort((a, b) => a.cost - b.cost);
   const ownedKinds = Object.values(profile.owned).filter((n) => n > 0).length;
+  const cosmetics = useMemo(() => countCosmetics(profile), [profile.kiraOwned, profile.signOwned]);
 
   return (
     <div className="screen screen-scroll has-art-bg" style={{ '--screen-bg': cssUrl('bgs/bg-cards.webp') } as CSSProperties}>
       <div className="screen-head">
         <button className="btn ghost small" onClick={onBack}>← 戻る</button>
         <h2>カード一覧</h2>
-        <span className="deck-count">{ownedKinds}/{ALL_CARDS.length}</span>
+        <div className="collect-head-meta">
+          <span className="cosmetic-counts" aria-label={`金枠 ${cosmetics.kira}、サイン ${cosmetics.sign}`}>
+            <span className="cosmetic-chip kira" title="金枠">
+              <KiraShineIcon size={13} />
+              <b>{cosmetics.kira}</b>
+            </span>
+            <span className="cosmetic-chip sign" title="金枠＋サイン">
+              <SignAIcon size={13} />
+              <b>{cosmetics.sign}</b>
+            </span>
+          </span>
+          <span className="deck-count">{ownedKinds}/{ALL_CARDS.length}</span>
+        </div>
       </div>
       <div className="tabs">
         {TABS.map((t) => (
@@ -36,6 +49,7 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
           {list.map((c) => {
             const n = profile.owned[c.id] ?? 0;
             const showKira = hasKira(profile, c.id);
+            const showSign = hasSign(profile, c.id);
             const showFlow = hasFlow(profile, c.id);
             const locked = n <= 0;
             return (
@@ -45,6 +59,7 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
                   cost={c.cost}
                   disabled={locked}
                   kira={showKira}
+                  sign={showSign}
                   flow={showFlow}
                   onClick={() => !locked && setPeek(c.id)}
                 />
@@ -87,7 +102,7 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
       {peek && (
         <div className="modal-bg" onClick={() => setPeek(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <CardDetail cardId={peek} kira={hasKira(profile, peek)} flow={hasFlow(profile, peek)} />
+            <CardDetail cardId={peek} kira={hasKira(profile, peek)} sign={hasSign(profile, peek)} flow={hasFlow(profile, peek)} />
             <button className="btn ghost small" onClick={() => setPeek(null)}>閉じる</button>
           </div>
         </div>

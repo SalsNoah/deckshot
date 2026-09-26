@@ -142,6 +142,54 @@ export function cardColor(cardId: string): string {
   return def.type === 'gear' ? TYPE_COLOR.gear : TYPE_COLOR.tactic;
 }
 
+/** Gold-frame (kira) shine mark — icon only, no lettering. */
+export function KiraShineIcon({ size = 14, className }: { size?: number; className?: string }) {
+  return (
+    <svg
+      className={className}
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M8 1.2l1.15 3.55L12.8 6 9.15 7.25 8 10.8 6.85 7.25 3.2 6l3.45-1.25L8 1.2z"
+        fill="currentColor"
+      />
+      <path d="M12.6 9.2l.55 1.7 1.7.55-1.7.55-.55 1.7-.55-1.7-1.7-.55 1.7-.55.55-1.7z" fill="currentColor" opacity="0.85" />
+      <path d="M3.2 10.1l.4 1.2 1.2.4-1.2.4-.4 1.2-.4-1.2-1.2-.4 1.2-.4.4-1.2z" fill="currentColor" opacity="0.7" />
+    </svg>
+  );
+}
+
+/** Signature (autograph) A-mark — icon glyph, not label text. */
+export function SignAIcon({ size = 14, className }: { size?: number; className?: string }) {
+  return (
+    <svg
+      className={className}
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M8.1 2.4c.35 0 .62.12.8.4l4.05 8.6c.14.3 0 .66-.32.8-.3.12-.66 0-.8-.32L10.9 9.2H5.2L4.25 11.9c-.14.32-.5.46-.8.32-.32-.14-.46-.5-.32-.8L7.2 2.8c.16-.26.44-.4.9-.4zm-.05 2.55L5.9 7.85h4.2L8.05 4.95z"
+        fill="currentColor"
+      />
+      <path
+        d="M4.2 12.4c1.6-.55 3.4-.7 5.6-.15 1.35.35 2.5.2 3.4-.35"
+        stroke="currentColor"
+        strokeWidth="1.15"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.9"
+      />
+    </svg>
+  );
+}
+
 export const RARITY_COLOR = {
   common: '#8a96a8',
   rare: '#4aa3ff',
