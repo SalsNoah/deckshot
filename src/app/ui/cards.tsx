@@ -121,18 +121,40 @@ export function Portrait({ cardId, size = 56, flow }: { cardId: string; size?: n
   );
 }
 
-export function StatRow({ atk, hp, aim, base, size = 'sm' }: {
+const statCls = (v: number, b?: number) => (b === undefined ? '' : v > b ? 'up' : v < b ? 'down' : '');
+
+export function StatRow({ atk, hp, aim, base, size = 'sm', showAim = true }: {
   atk: number; hp: number; aim: number;
   base?: { atk: number; hp: number; aim: number };
-  size?: 'sm' | 'lg';
+  size?: 'sm' | 'md' | 'lg';
+  showAim?: boolean;
 }) {
-  const cls = (v: number, b?: number) => (b === undefined ? '' : v > b ? 'up' : v < b ? 'down' : '');
-  const s = size === 'lg' ? 14 : 10;
+  const s = size === 'lg' ? 14 : size === 'md' ? 12 : 10;
   return (
     <div className={`stats stats-${size}`}>
-      <span className={`st atk ${cls(atk, base?.atk)}`}><Swords size={s} />{atk}</span>
-      <span className={`st hp ${cls(hp, base?.hp)}`}><Heart size={s} />{hp}</span>
-      <span className={`st aim ${cls(aim, base?.aim)}`}><Crosshair size={s} />{aim}</span>
+      <span className={`st atk ${statCls(atk, base?.atk)}`}><Swords size={s} />{atk}</span>
+      <span className={`st hp ${statCls(hp, base?.hp)}`}><Heart size={s} />{hp}</span>
+      {showAim && <span className={`st aim ${statCls(aim, base?.aim)}`}><Crosshair size={s} />{aim}</span>}
+    </div>
+  );
+}
+
+/** One-line card summary for the in-battle selection preview (the lifted hand card already shows the art). */
+export function CardStrip({ cardId }: { cardId: string }) {
+  const def = card(cardId);
+  const isOp = def.type === 'operator';
+  return (
+    <div className={`cstrip type-${def.type}`} style={{ '--c': cardColor(cardId), '--r': RARITY_COLOR[def.rarity] } as CSSProperties}>
+      <div className="cstrip-cost">{def.cost}</div>
+      <div className="cstrip-main">
+        <div className="cstrip-head">
+          <b>{def.en}</b>
+          <span>{def.name}</span>
+          <em>{isOp ? ROLE_LABEL[def.role!] : TYPE_LABEL[def.type]}</em>
+          {isOp && <StatRow size="md" atk={def.atk!} hp={def.hp!} aim={def.aim!} />}
+        </div>
+        {def.text && <p className="cstrip-text">{def.text}</p>}
+      </div>
     </div>
   );
 }
@@ -264,10 +286,12 @@ export interface UnitTileProps {
   state?: 'legal' | 'selected' | 'moving' | 'ghost' | 'dim';
   badges?: string[];
   flow?: boolean;
+  /** Predicted firing tier in a contested zone (1 = shoots first). */
+  order?: number;
   onClick?: MouseEventHandler;
 }
 
-export const UnitTile = forwardRef<HTMLDivElement, UnitTileProps>(function UnitTile({ u, mine, state, badges, flow, onClick }, ref) {
+export const UnitTile = forwardRef<HTMLDivElement, UnitTileProps>(function UnitTile({ u, mine, state, badges, flow, order, onClick }, ref) {
   const def = card(u.cardId);
   const role = def.role ?? 'assault';
   const guard = hasAbility(u as unknown as Unit, 'guard');
@@ -282,6 +306,7 @@ export const UnitTile = forwardRef<HTMLDivElement, UnitTileProps>(function UnitT
       data-uid={u.uid}
     >
       <div className="unit-portrait"><Portrait cardId={u.cardId} size={34} flow={flow} /></div>
+      {order !== undefined && <span className="unit-order" aria-label={`射撃順 ${order}`}>{order}</span>}
       <div className="unit-body">
         <div className="unit-top">
           <span className="unit-name">{def.en}</span>
@@ -292,7 +317,11 @@ export const UnitTile = forwardRef<HTMLDivElement, UnitTileProps>(function UnitT
             {u.weapon && <WeaponIcon kind={card(u.weapon).weaponClass!} size={9} />}
           </span>
         </div>
-        <StatRow atk={u.atk} hp={u.hp} aim={u.aim} base={{ atk: def.atk!, hp: u.maxHp, aim: def.aim! }} />
+        <StatRow atk={u.atk} hp={u.hp} aim={u.aim} base={{ atk: def.atk!, hp: u.maxHp, aim: def.aim! }} showAim={false} />
+      </div>
+      <div className={`unit-aim ${statCls(u.aim, def.aim!)}`} aria-label={`AIM ${u.aim}`}>
+        <Crosshair size={10} strokeWidth={2.6} />
+        <b>{u.aim}</b>
       </div>
       <div className="unit-hpbar" style={{ '--seg': Math.max(1, u.maxHp) } as CSSProperties}>
         <i className="unit-hplag" style={{ width: `${hpPct * 100}%` }} />

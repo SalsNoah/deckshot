@@ -21,8 +21,10 @@
     "node": ">=20"
   },
   "dependencies": {
+    "@fontsource-variable/noto-sans-jp": "^5.3.0",
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "@fontsource/big-shoulders-display": "^5.3.0",
     "@fontsource/black-ops-one": "^5.3.0",
-    "@fontsource/rajdhani": "^5.3.0",
     "lucide-react": "^1.48.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

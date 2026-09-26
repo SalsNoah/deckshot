@@ -81,7 +81,7 @@ export function HowTo({ onBack }: { onBack: () => void }) {
         <h2>遊び方</h2>
       </div>
       <HowToContent />
-      <button className="hud-btn hud-main hud-primary" style={{ '--a': '#ff4655' } as CSSProperties} onClick={onBack}>
+      <button className="hud-btn hud-main hud-primary" onClick={onBack}>
         <span className="hud-ico"><Check size={22} /></span>
         <span className="hud-txt"><b>GOT IT</b><small>わかった！</small></span>
         <ChevronRight className="hud-go" size={22} />

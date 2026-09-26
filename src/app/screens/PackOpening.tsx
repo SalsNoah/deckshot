@@ -13,7 +13,7 @@ type Hint = 'low' | 'epic' | 'legend';
 const RANK: Record<Rarity, number> = { common: 0, rare: 1, epic: 2, legend: 3 };
 const LABEL: Record<Rarity, string> = { common: 'COMMON', rare: 'RARE', epic: 'EPIC', legend: 'LEGEND' };
 const BY_RANK: Rarity[] = ['legend', 'epic', 'rare', 'common'];
-const HINT_COLOR: Record<Hint, string> = { low: '#2ee6d6', epic: RARITY_COLOR.epic, legend: RARITY_COLOR.legend };
+const HINT_COLOR: Record<Hint, string> = { low: '#19f0ff', epic: RARITY_COLOR.epic, legend: RARITY_COLOR.legend };
 const COLS = 6;
 
 const TEAR_MS: Record<Hint, number> = { low: 340, epic: 760, legend: 1000 };
@@ -602,14 +602,13 @@ export function PackOpening({ cards, kira, sign, fresh, quick, onClose, onAgain,
             {onAgain && (
               <button
                 className="hud-btn hud-main hud-primary pack-again"
-                style={{ '--a': '#ff4655' } as CSSProperties}
                 onClick={() => { if (againReady) onAgain(); }}
               >
                 <span className="hud-ico"><Dices size={20} /></span>
                 <span className="hud-txt"><b>AGAIN</b><small>{againLabel ?? 'もう一度引く'}</small></span>
               </button>
             )}
-            <button className="hud-btn hud-main pack-ok" style={{ '--a': '#2ee6d6' } as CSSProperties} onClick={onClose}>
+            <button className="hud-btn hud-main pack-ok" onClick={onClose}>
               <span className="hud-ico"><Check size={20} /></span>
               <span className="hud-txt"><b>OK</b><small>閉じる</small></span>
             </button>

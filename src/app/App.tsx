@@ -45,6 +45,23 @@ export function App() {
     else setBgm('menu');
   }, [screen.name, profile.sound]);
 
+  useEffect(() => {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const onDown = (e: PointerEvent) => {
+      const el = (e.target as Element | null)?.closest<HTMLButtonElement>('.btn, .hud-btn');
+      if (!el || el.disabled) return;
+      const r = el.getBoundingClientRect();
+      const dot = document.createElement('span');
+      dot.className = 'press-ripple';
+      dot.style.setProperty('--x', `${e.clientX - r.left}px`);
+      dot.style.setProperty('--y', `${e.clientY - r.top}px`);
+      el.appendChild(dot);
+      dot.addEventListener('animationend', () => dot.remove(), { once: true });
+    };
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, []);
+
   const update = useCallback((p: Partial<Profile>) => setProfile((cur) => ({ ...cur, ...p })), []);
 
   const exitBattle = useCallback(() => {
@@ -103,6 +120,7 @@ export function App() {
 
   return (
     <div className="app">
+      <div key={screen.name} className="shutter" aria-hidden />
       {screen.name === 'title' && (
         <Title
           profile={profile}
@@ -113,7 +131,6 @@ export function App() {
           onCards={() => setScreen({ name: 'cards' })}
           onDeckEdit={() => setScreen({ name: 'deckEdit', back: { name: 'title' } })}
           onGacha={() => setScreen({ name: 'gacha' })}
-          onAnimPreview={() => setScreen({ name: 'animPreview' })}
         />
       )}
       {screen.name === 'deck' && (
@@ -155,8 +172,10 @@ export function App() {
       {screen.name === 'howto' && (
         <HowTo onBack={() => setScreen(screen.next ?? { name: 'title' })} />
       )}
-      {screen.name === 'cards' && <Cards profile={profile} onBack={() => setScreen({ name: 'title' })} />}
-      {screen.name === 'animPreview' && <AnimPreview onBack={() => setScreen({ name: 'title' })} />}
+      {screen.name === 'cards' && (
+        <Cards profile={profile} onBack={() => setScreen({ name: 'title' })} onPreview={() => setScreen({ name: 'animPreview' })} />
+      )}
+      {screen.name === 'animPreview' && <AnimPreview onBack={() => setScreen({ name: 'cards' })} />}
     </div>
   );
 }

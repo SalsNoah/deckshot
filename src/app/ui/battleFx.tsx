@@ -28,6 +28,7 @@ export type Fx =
   | { id: number; kind: 'spot'; x: number; y: number }
   | { id: number; kind: 'hsburst'; x: number; y: number }
   | { id: number; kind: 'trail'; x: number; y: number; len: number; angle: number; color: string }
+  | { id: number; kind: 'orb'; x: number; y: number; dx: number; dy: number }
   | { id: number; kind: 'screen'; effect: 'nuke' | 'hs' | 'engage' };
 
 export type FxInput = Fx extends infer T ? (T extends Fx ? Omit<T, 'id'> : never) : never;
@@ -182,6 +183,13 @@ export function FxView({ f }: { f: Fx }) {
           style={{ left: f.x, top: f.y, width: f.len, transform: `rotate(${f.angle}deg)`, '--c': f.color } as CSSProperties}
         />
       );
+    case 'orb':
+      // X and Y ride separate easings so the path arcs up before dropping into the streak track.
+      return (
+        <div className="fx-orb" style={{ left: f.x, top: f.y, '--dx': `${f.dx}px`, '--dy': `${f.dy}px` } as CSSProperties}>
+          <div className="fx-orb-y"><i /></div>
+        </div>
+      );
     case 'screen':
       return <div className={`fx-screen fx-screen-${f.effect}`}>{f.effect === 'nuke' && <Radiation size={96} />}</div>;
   }
@@ -248,8 +256,8 @@ export function revealItems(plays: PublicPlay[], all: PublicPlay[], snap: BoardS
 }
 
 function RevealCard({ item, i, faceDown }: { item: RevealItem; i: number; faceDown?: boolean }) {
-  const color = item.cardId ? cardColor(item.cardId) : item.kind === 'streak' ? '#ff4655' : '#ffb547';
-  const rim = item.rarity === 'none' ? (item.kind === 'streak' ? '#ff4655' : '#7d8b9c') : RARITY_COLOR[item.rarity];
+  const color = item.cardId ? cardColor(item.cardId) : item.kind === 'streak' ? '#ff2d55' : '#ffc247';
+  const rim = item.rarity === 'none' ? (item.kind === 'streak' ? '#ff2d55' : '#8d97a8') : RARITY_COLOR[item.rarity];
   let art: ReactNode = null;
   if (item.kind === 'streak' && item.streak) art = <StreakIcon id={item.streak} size={26} />;
   else if (item.kind === 'resupply') art = <Coins size={24} />;

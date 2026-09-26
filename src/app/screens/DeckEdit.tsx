@@ -163,7 +163,6 @@ export function DeckEdit({ profile, onChange, onBack }: {
 
       <button
         className="hud-btn hud-main hud-primary sticky-save"
-        style={{ '--a': '#ff4655' } as CSSProperties}
         disabled={!validation.ok}
         onClick={save}
       >

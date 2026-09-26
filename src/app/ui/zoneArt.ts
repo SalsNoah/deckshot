@@ -28,8 +28,8 @@ export const ZONE_VISUAL: Record<string, ZoneVisual> = {
   cqb: { tip: '全員ATK+1', accent: '#ffb020', Icon: Building2 },
   supply: { tip: '支配+2¢', accent: '#ffd24a', Icon: Store },
   toxic: { tip: '終了時-1', accent: '#5dff9a', Icon: Skull },
-  outpost: { tip: '配置コスト-1', accent: '#34f0df', Icon: Boxes },
-  dark: { tip: 'AIM0同時撃', accent: '#b8c4d4', Icon: EyeOff },
+  outpost: { tip: '配置-1¢', accent: '#34f0df', Icon: Boxes },
+  dark: { tip: '同時射撃', accent: '#b8c4d4', Icon: EyeOff },
   cover: { tip: '被ダメ-1', accent: '#e0a060', Icon: Shield },
   radar: { tip: '支配SP+1', accent: '#d48cff', Icon: Radar },
 };

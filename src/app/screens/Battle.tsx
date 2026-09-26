@@ -2,8 +2,8 @@ import { Bomb, ChevronRight, CircleHelp, Coins, Crosshair, Flag, Flame, Home, Me
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import { flushSync } from 'react-dom';
 import {
-  card, checkPlan, comebackBonus, deckById, legalTargets, NUKE_BLOCK_ZONES, RESUPPLY_COST, STREAK_ORDER, STREAKS,
-  tryAdd, unitSnap, ZONE_LABELS, ZONE_MODS, ZONES,
+  baseIncome, card, checkPlan, comebackBonus, deckById, legalTargets, NUKE_BLOCK_ZONES, RESUPPLY_COST, STREAK_ORDER, STREAKS,
+  tryAdd, unitSnap, zoneValue, ZONE_LABELS, ZONE_MODS, ZONES,
   type Action, type BoardSnap, type DamageSource, type GameEvent, type GameView, type Plan, type PlayerId, type PublicPlay,
   type StreakId, type UnitRef, type UnitSnap, type Winner, type WinReason, type ZoneId,
 } from '../../engine';
@@ -15,7 +15,7 @@ import {
   CalloutView, CutInView, FxView, HS_COLOR, REVEAL_FLIP_AT, REVEAL_FLIP_GAP, RevealStage, revealItems,
   type Callout, type CalloutVariant, type CutIn, type Fx, type FxInput, type PopTone, type RevealState, type ZoneEffect,
 } from '../ui/battleFx';
-import { CardDetail, HandCard, preloadCardArt, UnitTile } from '../ui/cards';
+import { CardDetail, CardStrip, HandCard, preloadCardArt, UnitTile } from '../ui/cards';
 import { cssUrl } from '../ui/assets';
 import { CardIcon, StreakIcon, WeaponIcon } from '../ui/icons';
 import { REASON_TEXT, TARGET_HINT } from '../ui/text';
@@ -46,8 +46,24 @@ export interface MatchResult {
   nuked: boolean;
 }
 
-const ME_COLOR = '#2ee6d6';
-const OPP_COLOR = '#ff4655';
+const ME_COLOR = '#19f0ff';
+const OPP_COLOR = '#ff2d55';
+/** Streak rail position (0–1): each streak owns an equal segment that SP fills toward its cost. */
+function railPos(sp: number): number {
+  const costs = STREAK_ORDER.map((id) => STREAKS[id].cost);
+  let prev = 0;
+  for (let i = 0; i < costs.length; i++) {
+    if (sp <= costs[i]) return (i + (sp - prev) / (costs[i] - prev)) / costs.length;
+    prev = costs[i];
+  }
+  return 1;
+}
+
+/** Rank units by AIM (ties share a tier): 1 fires first. */
+function aimTiers(units: UnitSnap[]): Map<number, number> {
+  const aims = [...new Set(units.map((u) => u.aim))].sort((a, b) => b - a);
+  return new Map(aims.map((a, i) => [a, i + 1]));
+}
 
 const DAMAGE_COLOR: Record<DamageSource, string> = {
   tactic: '#ff5a5a', fire: '#ff9a3c', trap: '#7cc8ff', c4: '#ffb547', toxic: '#5dff9a', splash: '#ff7a5a', streak: '#ffb547', deploy: '#ff5a5a',
@@ -180,6 +196,9 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
   const [oppLeft, setOppLeft] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const passHoldRef = useRef<number | null>(null);
+  const [holding, setHolding] = useState(false);
   const tileRefs = useRef(new Map<string, HTMLDivElement>());
   const zoneRefs = useRef<(HTMLDivElement | null)[]>([null, null, null]);
   const speedRef = useRef(1);
@@ -309,11 +328,16 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
 
   const hitReact = (uid: string, strong: boolean) => {
     const a = strong ? 4 : 2.5;
+    // Strong hits hold the white flash (~70ms of 380ms) before the shake: a tile-level hit-stop.
+    const hold: Keyframe[] = strong ? [{ transform: 'translate(0, 0)', filter: 'brightness(2.4) saturate(0.4)', offset: 0.18 }] : [];
+    const o = strong ? 0.18 : 0;
+    const at = (t: number) => o + (1 - o) * t;
     animTile(uid, [
       { transform: 'translate(0, 0)', filter: 'brightness(2.4) saturate(0.4)' },
-      { transform: `translate(${-a}px, 1px)`, filter: 'brightness(1.5) saturate(0.8)', offset: 0.2 },
-      { transform: `translate(${a}px, -1px)`, offset: 0.45 },
-      { transform: `translate(${-a * 0.4}px, 0)`, offset: 0.7 },
+      ...hold,
+      { transform: `translate(${-a}px, 1px)`, filter: 'brightness(1.5) saturate(0.8)', offset: at(0.2) },
+      { transform: `translate(${a}px, -1px)`, offset: at(0.45) },
+      { transform: `translate(${-a * 0.4}px, 0)`, offset: at(0.7) },
       { transform: 'translate(0, 0)', filter: 'brightness(1) saturate(1)' },
     ], { duration: strong ? 380 : 300, easing: 'ease-out' });
   };
@@ -672,6 +696,13 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
           }
           sfx.kill();
           if (!fast()) sfx.shatter();
+          if (b && ev.byPlayer === me && !fast()) {
+            const bar = center(trackRef.current?.querySelector('.st-bar'));
+            if (bar) {
+              const fill = railPos(ev.snap.players[me].sp);
+              addFx({ kind: 'orb', x: b.x, y: b.y, dx: bar.left + bar.w * fill - b.x, dy: bar.y - b.y }, 600);
+            }
+          }
           setAnimSnap(ev.snap);
           setFeed((f) => [
             {
@@ -826,6 +857,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
     });
     return () => {
       aliveRef.current = false;
+      if (passHoldRef.current !== null) window.clearTimeout(passHoldRef.current);
     };
   }, [conn, play]);
 
@@ -986,6 +1018,26 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
     conn.submit(p);
   };
 
+  /** Passing a whole turn needs a 0.4s hold so a stray tap can't throw it away. */
+  const startPassHold = () => {
+    if (phaseRef.current !== 'plan' || planRef.current.actions.length > 0) return;
+    setHolding(true);
+    passHoldRef.current = window.setTimeout(() => {
+      passHoldRef.current = null;
+      setHolding(false);
+      submit();
+    }, 400);
+  };
+
+  const endPassHold = (tapped: boolean) => {
+    if (passHoldRef.current !== null) {
+      window.clearTimeout(passHoldRef.current);
+      passHoldRef.current = null;
+      if (tapped) showToast('パスするには長押し（0.4秒）');
+    }
+    setHolding(false);
+  };
+
   const toggleResupply = () => {
     if (phase !== 'plan') return;
     const idx = plan.actions.findIndex((a) => a.t === 'resupply');
@@ -1053,7 +1105,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
         : ''
     : '';
 
-  const renderUnit = (u: UnitSnap, side: PlayerId) => {
+  const renderUnit = (u: UnitSnap, side: PlayerId, order?: number) => {
     const isGhost = u.uid.startsWith('hid:') || u.uid.startsWith('mv:');
     const ref: UnitRef = u.uid.startsWith('hid:') ? { hid: u.uid.slice(4) } : { uid: u.uid };
     const key = refKey(ref);
@@ -1068,6 +1120,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
         mine={side === me}
         state={state}
         badges={pendingByUnit.get(key)}
+        order={order}
         flow={side === me ? hasFlow({ flowOwned }, u.cardId) : false}
         ref={(el) => {
           if (isGhost) return;
@@ -1080,62 +1133,68 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
   };
 
   const oppDeck = deckById(view.opp.deckId);
+  const doubled = zoneValue('open', board.turn) > zoneValue('open', 1);
+  const finalTurn = board.turn >= view.config.maxTurns;
+  // `matchPoint` is the trailing side that earns the comeback bonus; the other side is on match point.
+  const onMatchPoint = matchPoint === null ? null : matchPoint === me ? opp : me;
+  const myBonus = comebackBonus(myScore, oppScore, target);
+  const planning = phase === 'plan' || phase === 'waiting';
+  const hasActions = plan.actions.length > 0;
+  const nextIncome = board.turn < view.config.maxTurns ? baseIncome(board.turn + 1) : 0;
+  const timeWarn = phase === 'plan' && timeLeft !== null && timeLeft <= 10;
+  const timeCrit = phase === 'plan' && timeLeft !== null && timeLeft <= 3;
 
   return (
     <div
-      className={`battle phase-${phase} has-art-bg ${combat ? 'in-combat' : ''}`}
+      className={`battle phase-${phase} has-art-bg ${combat ? 'in-combat' : ''} ${sel ? 'selecting' : ''} ${timeCrit ? 'time-crit' : ''}`}
       style={{ '--screen-bg': cssUrl('bgs/bg-battle.webp') } as CSSProperties}
       ref={rootRef}
     >
-      {/* Opponent HUD */}
-      <div className="hud hud-opp">
-        <div className="hud-name">
-          <span className="dot" style={{ background: OPP_COLOR }} />
-          <b>{conn.oppName}</b>
-          <span className="deck-tag" style={{ color: oppDeck.color }}>{oppDeck.en}</span>
+      {/* Scoreboard: both scores side by side around the turn, like an FPS round HUD. */}
+      <div className="sb">
+        <div className="sb-row">
+          <ScorePips score={myScore} target={target} side="me" hot={onMatchPoint === me} />
+          <div className="sb-score me">
+            <b key={myScore}>{myScore}</b>
+            {onMatchPoint === me && <i className="sb-mp">MP</i>}
+          </div>
+          <div className={`sb-turn ${finalTurn ? 'final' : ''}`}>
+            <small>{finalTurn ? 'FINAL' : 'TURN'}</small>
+            <b>{board.turn}<span>/{view.config.maxTurns}</span></b>
+            {doubled && <i className="sb-x2" title="7ターン目以降は得点2倍">×2</i>}
+          </div>
+          <div className="sb-score opp">
+            {onMatchPoint === opp && <i className="sb-mp">MP</i>}
+            <b key={oppScore}>{oppScore}</b>
+          </div>
+          <ScorePips score={oppScore} target={target} side="opp" hot={onMatchPoint === opp} />
         </div>
-        <div className="hud-stats">
-          <span title="クレジット"><Coins size={12} />{players[opp].credits}</span>
-          <span title="SP" className="sp">SP {players[opp].sp}</span>
-          <span title="手札">✋{players[opp].handCount}</span>
-          <span className={`ready ${oppReady ? 'on' : ''}`}>{oppReady ? 'READY' : phase === 'plan' || phase === 'waiting' ? '作戦中…' : ''}</span>
+        <div className="sb-sub">
+          <div className="sb-tools">
+            <button className="icon-btn" onClick={() => setHelpOpen(true)} aria-label="ヘルプ"><CircleHelp size={15} /></button>
+            <button className="icon-btn" onClick={() => setMenuOpen(true)} aria-label="メニュー"><Flag size={15} /></button>
+            <button className="icon-btn" onClick={() => setEmoteOpen((o) => !o)} aria-label="エモート"><MessageCircle size={15} /></button>
+            {aimTier && (
+              <span key={aimTier.key} className="aim-tier"><Crosshair size={11} strokeWidth={2.6} />AIM<b>{aimTier.aim}</b></span>
+            )}
+          </div>
+          <div className="sb-opp">
+            <b className="sb-opp-name">{conn.oppName}</b>
+            <span className="deck-tag" style={{ color: oppDeck.color }}>{oppDeck.en}</span>
+            <span className="sb-stat gold" title="クレジット"><Coins size={11} />{players[opp].credits}</span>
+            <span className="sb-stat sp" title="SP">SP{players[opp].sp}</span>
+            <span className="sb-stat" title="手札">✋{players[opp].handCount}</span>
+            {planning && <span className={`ready ${oppReady ? 'on' : ''}`}>{oppReady ? 'READY' : '作戦中'}</span>}
+          </div>
         </div>
-        <ScoreBar score={oppScore} target={target} color={OPP_COLOR} />
         {emotes.filter((e) => !e.mine).map((e) => (
           <div key={e.key} className="emote-bubble opp">{EMOTES.find((x) => x.id === e.id)?.text}</div>
         ))}
-      </div>
-      {view.opp.hand && phase === 'plan' && (
-        <div className="uav-hand">
-          <span>UAV：相手の手札</span>
-          {view.opp.hand.map((h) => <span key={h.hid} className="uav-card"><CardIcon cardId={h.cardId} size={12} />{card(h.cardId).en}</span>)}
-        </div>
-      )}
-      {spottedByUav && <div className="uav-hand spotted"><span>敵のUAV：こちらの手札が見られている</span></div>}
-      {nukeLanding !== null && (phase === 'plan' || phase === 'waiting') && (
-        <div className={`nuke-banner ${nukeLanding === me ? 'mine' : 'theirs'}`}>
-          <Radiation size={14} />
-          {nukeLanding === me
-            ? `戦術核：このターン終了時に着弾。敵の確保を${NUKE_BLOCK_ZONES - 1}ゾーン以下に抑えろ`
-            : `敵の戦術核：このターン終了時に着弾。${NUKE_BLOCK_ZONES}ゾーン確保で阻止！`}
-        </div>
-      )}
-      {matchPoint !== null && (phase === 'plan' || phase === 'waiting') && (
-        <div className={`matchpoint-banner ${matchPoint === me ? 'mine' : 'theirs'}`}>
-          MATCH POINT
-          <span>{matchPoint === me ? '逆転のチャンス：確保したゾーン1つにつき+1pt' : 'あと一押し：ただし相手は確保ゾーン1つにつき+1pt'}</span>
-        </div>
-      )}
-
-      <div className="turn-bar">
-        <span>TURN <b>{board.turn}</b>/{view.config.maxTurns}</span>
-        {aimTier && (
-          <span key={aimTier.key} className="aim-tier"><Crosshair size={11} strokeWidth={2.6} />AIM<b>{aimTier.aim}</b></span>
+        {emoteOpen && (
+          <div className="emote-menu">
+            {EMOTES.map((e) => <button key={e.id} onClick={() => sendEmote(e.id)}>{e.text}</button>)}
+          </div>
         )}
-        <span className="menu-btns">
-          <button className="icon-btn" onClick={() => setHelpOpen(true)} aria-label="ヘルプ"><CircleHelp size={16} /></button>
-          <button className="icon-btn" onClick={() => setMenuOpen(true)} aria-label="メニュー"><Flag size={16} /></button>
-        </span>
       </div>
 
       {/* Board */}
@@ -1152,6 +1211,8 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
           const contest = oppUnits.length > 0 && myUnits.length > 0;
           const line = contest ? 'contest' : ctrl === me ? 'me' : ctrl === opp ? 'opp' : '';
           const contested = combat && contest && !z.smoked;
+          const tiers = contest && !z.smoked && planning ? aimTiers([...oppUnits, ...myUnits]) : null;
+          const pts = zoneValue(z.modId, board.turn) + myBonus;
           return (
             <div
               key={zi}
@@ -1172,25 +1233,56 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
                 >
                   <span className="zone-tip">{vis.tip}</span>
                 </button>
-                <div className="zone-flags">
-                  {z.c4 && <span className="c4" style={{ color: sideColor(z.c4.owner) }}><Bomb size={12} />{z.c4.explodeTurn === board.turn ? '!' : ''}</span>}
-                  {z.fire[me] > 0 && <span style={{ color: ME_COLOR }}><Flame size={12} /></span>}
-                  {z.fire[opp] > 0 && <span style={{ color: OPP_COLOR }}><Flame size={12} /></span>}
+              </div>
+              <div className="zone-flags">
+                {z.c4 && <span className="c4" style={{ color: sideColor(z.c4.owner) }}><Bomb size={12} />{z.c4.explodeTurn === board.turn ? '!' : ''}</span>}
+                {z.fire[me] > 0 && <span style={{ color: ME_COLOR }}><Flame size={12} /></span>}
+                {z.fire[opp] > 0 && <span style={{ color: OPP_COLOR }}><Flame size={12} /></span>}
+              </div>
+              {pendingByZone[zi].length > 0 && <div className="zone-pending">{pendingByZone[zi].join(' / ')}</div>}
+              {oppUnits.length + myUnits.length === 0 && (
+                <div className="zone-mark" aria-hidden>
+                  <ZoneIcon size={44} strokeWidth={1.75} />
                 </div>
-                {pendingByZone[zi].length > 0 && <div className="zone-pending">{pendingByZone[zi].join(' / ')}</div>}
+              )}
+              <div className="side side-opp">{oppUnits.map((u) => renderUnit(u, opp, tiers?.get(u.aim)))}</div>
+              {/* Keyed by controller so the tube re-ignites only when the zone actually changes hands. */}
+              <div key={String(ctrl)} className={`zone-line ${line} ${ctrl !== null ? 'ignite' : ''}`}>
+                {line && <span className="zl-state">{line === 'contest' ? '交戦' : line === 'me' ? '確保' : '敵確保'}</span>}
+                <b className="zl-pts" title="自分が確保したときの獲得pt">+{pts}</b>
               </div>
-              <div className="zone-mark" aria-hidden>
-                <ZoneIcon size={44} strokeWidth={1.75} />
-              </div>
-              <div className="side side-opp">{oppUnits.map((u) => renderUnit(u, opp))}</div>
-              <div className={`zone-line ${line}`}>
-                {line === 'contest' ? '交戦' : line === 'me' ? '確保' : line === 'opp' ? '敵確保' : '—'}
-              </div>
-              <div className="side side-me">{myUnits.map((u) => renderUnit(u, me))}</div>
+              <div className="side side-me">{myUnits.map((u) => renderUnit(u, me, tiers?.get(u.aim)))}</div>
               {z.smoked && <div className="smoke-cloud" />}
             </div>
           );
         })}
+
+        {/* Alerts overlay the (usually empty) bottom edge of the board so the layout never shifts. */}
+        {planning && (view.opp.hand || spottedByUav || nukeLanding !== null || matchPoint !== null) && (
+          <div className="alerts">
+            {view.opp.hand && phase === 'plan' && (
+              <div className="uav-hand">
+                <span>UAV：相手の手札</span>
+                {view.opp.hand.map((h) => <span key={h.hid} className="uav-card"><CardIcon cardId={h.cardId} size={12} />{card(h.cardId).en}</span>)}
+              </div>
+            )}
+            {spottedByUav && <div className="uav-hand spotted"><span>敵のUAV：こちらの手札が見られている</span></div>}
+            {nukeLanding !== null && (
+              <div className={`nuke-banner ${nukeLanding === me ? 'mine' : 'theirs'}`}>
+                <Radiation size={14} />
+                {nukeLanding === me
+                  ? `戦術核：このターン終了時に着弾。敵の確保を${NUKE_BLOCK_ZONES - 1}ゾーン以下に抑えろ`
+                  : `敵の戦術核：このターン終了時に着弾。${NUKE_BLOCK_ZONES}ゾーン確保で阻止！`}
+              </div>
+            )}
+            {matchPoint !== null && (
+              <div className={`matchpoint-banner ${matchPoint === me ? 'mine' : 'theirs'}`}>
+                MATCH POINT
+                <span>{matchPoint === me ? '逆転のチャンス：確保したゾーン1つにつき+1pt' : 'あと一押し：ただし相手は確保ゾーン1つにつき+1pt'}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Kill feed */}
@@ -1208,113 +1300,138 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
       {reveal && <RevealStage key={reveal.key} r={reveal} />}
       {cutin && <CutInView key={cutin.key} c={cutin} />}
 
-      {/* My HUD */}
-      <div className="hud hud-me">
-        <div className="hud-row">
-          <ScoreBar score={myScore} target={target} color={ME_COLOR} />
-          <div className="credits"><Coins size={14} /><b>{credits}</b><span>¢</span></div>
-          <button className="icon-btn" onClick={() => setEmoteOpen((o) => !o)} aria-label="エモート"><MessageCircle size={16} /></button>
-        </div>
-        <div className="streaks">
-          <span className="sp-label">SP <b>{sp}</b></span>
-          {STREAK_ORDER.map((id) => {
-            const s = STREAKS[id];
-            const queued = plan.actions.some((a) => a.t === 'streak' && a.id === id)
-              || (id === 'uav' && uavOn)
-              || (id === 'nuke' && view.self.nukeTurn >= view.turn);
-            const can = sp >= s.cost || queued;
-            return (
-              <button
-                key={id}
-                className={`streak ${can ? 'can' : ''} ${queued ? 'queued' : ''} ${sel?.kind === 'streak' && sel.id === id ? 'selected' : ''} streak-${id}`}
-                onClick={() => onStreakClick(id)}
-                disabled={phase !== 'plan'}
-              >
-                <StreakIcon id={id} size={13} />
-                <span>{s.name}</span>
-                <small>{s.cost}</small>
-              </button>
-            );
-          })}
-        </div>
+      <div className="dock">
         {emotes.filter((e) => e.mine).map((e) => (
           <div key={e.key} className="emote-bubble mine">{EMOTES.find((x) => x.id === e.id)?.text}</div>
         ))}
-        {emoteOpen && (
-          <div className="emote-menu">
-            {EMOTES.map((e) => <button key={e.id} onClick={() => sendEmote(e.id)}>{e.text}</button>)}
-          </div>
-        )}
-      </div>
 
-      {/* Planned actions */}
-      <div className="plan-chips">
-        {phase === 'plan' && plan.actions.length === 0 && !sel && <span className="plan-empty">カードをタップして作戦を立てよう</span>}
-        {phase === 'plan' && sel && <span className="plan-hint">{hint}<button onClick={() => setSel(null)}><X size={12} /></button></span>}
-        {phase === 'plan' && !sel && plan.actions.map((a, i) => {
-          const d = describeAction(view, a);
-          return (
-            <button key={i} className="chip" onClick={() => removeAction(i)}>
-              {d.label}<X size={10} />
-            </button>
-          );
-        })}
-        {phase === 'waiting' && <span className="plan-empty">相手の作戦を待っています…</span>}
-        {phase === 'anim' && <button className="chip skip" onClick={skip}>SKIP ▶▶</button>}
-      </div>
-
-      {/* Selected card preview */}
-      {phase === 'plan' && selectedCard && (
-        <div className="preview">
-          <CardDetail cardId={selectedCard.cardId} compact kira={hasKira({ kiraOwned }, selectedCard.cardId)} sign={hasSign({ signOwned }, selectedCard.cardId)} flow={hasFlow({ flowOwned }, selectedCard.cardId)} />
-          <div className="preview-actions">
-            {selectedDef?.type === 'tactic' && selectedDef.target === 'none' ? (
-              <button className="btn primary small" onClick={() => addAction({ t: 'tactic', hid: selectedCard.hid })}>使用する</button>
-            ) : (
-              <span className="preview-hint">{hint}</span>
-            )}
-            <button className="btn ghost small" onClick={() => setSel(null)}>キャンセル</button>
+        {/* Killstreak track: one segment per streak; each button ends at the notch where it unlocks. */}
+        <div className="streak-track" ref={trackRef}>
+          <span className="sp-label">SP<b key={sp}>{sp}</b></span>
+          <div className="st-rail">
+            <div className="st-bar">
+              <i style={{ width: `${railPos(sp) * 100}%` }} />
+              {STREAK_ORDER.map((id, i) => (
+                <span key={id} className={`st-notch ${sp >= STREAKS[id].cost ? 'on' : ''}`} style={{ left: `${((i + 1) / STREAK_ORDER.length) * 100}%` }} />
+              ))}
+            </div>
+            {STREAK_ORDER.map((id, i) => {
+              const s = STREAKS[id];
+              const queued = plan.actions.some((a) => a.t === 'streak' && a.id === id)
+                || (id === 'uav' && uavOn)
+                || (id === 'nuke' && view.self.nukeTurn >= view.turn);
+              const can = sp >= s.cost || queued;
+              return (
+                <button
+                  key={id}
+                  className={`streak ${can ? 'can' : ''} ${queued ? 'queued' : ''} ${sel?.kind === 'streak' && sel.id === id ? 'selected' : ''} streak-${id}`}
+                  style={{ '--pos': (i + 1) / STREAK_ORDER.length } as CSSProperties}
+                  onClick={() => onStreakClick(id)}
+                  disabled={phase !== 'plan'}
+                >
+                  <StreakIcon id={id} size={13} />
+                  <span>{s.name}</span>
+                  <small>{s.cost}</small>
+                </button>
+              );
+            })}
           </div>
         </div>
-      )}
 
-      {/* Hand */}
-      <div className="hand">
-        {view.self.hand.map((h) => {
-          const def = card(h.cardId);
-          const used = usedHids.has(h.hid);
-          return (
-            <HandCard
-              key={h.hid}
-              cardId={h.cardId}
-              cost={def.cost}
-              used={used}
-              kira={hasKira({ kiraOwned }, h.cardId)}
-              sign={hasSign({ signOwned }, h.cardId)}
-              flow={hasFlow({ flowOwned }, h.cardId)}
-              selected={sel?.kind === 'hand' && sel.hid === h.hid}
-              disabled={!used && def.cost > credits}
-              onClick={() => onHandClick(h.hid)}
-            />
-          );
-        })}
-        {view.self.hand.length === 0 && <div className="hand-empty">手札なし</div>}
-      </div>
+        {/* Planned actions */}
+        <div className="plan-chips">
+          {phase === 'plan' && plan.actions.length === 0 && !sel && <span className="plan-empty">カードをタップして作戦を立てよう</span>}
+          {phase === 'plan' && sel?.kind === 'streak' && <span className="plan-hint">{hint}<button onClick={() => setSel(null)} aria-label="取り消し"><X size={12} /></button></span>}
+          {phase === 'plan' && !sel && plan.actions.map((a, i) => {
+            const d = describeAction(view, a);
+            return (
+              <button key={i} className="chip" onClick={() => removeAction(i)}>
+                {d.label}<X size={10} />
+              </button>
+            );
+          })}
+          {phase === 'waiting' && <span className="plan-empty">相手の作戦を待っています…</span>}
+          {phase === 'anim' && <button className="chip skip" onClick={skip}>SKIP ▶▶</button>}
+        </div>
 
-      <div className="action-bar">
-        <div className="deck-info">山札 {view.self.deckCount}</div>
-        <button
-          className={`btn small resupply-btn ${plan.actions.some((a) => a.t === 'resupply') ? 'queued' : ''}`}
-          disabled={phase !== 'plan'}
-          onClick={toggleResupply}
-          title="クレジットを払ってカードを1枚引く（使えるのは次のターンから・1ターン1回）"
-        >
-          補給<small>{RESUPPLY_COST}¢</small>
-        </button>
-        <button className="btn ready-btn" disabled={phase !== 'plan'} onClick={submit}>
-          {phase === 'plan' ? (plan.actions.length ? `READY（${plan.actions.length}）` : 'READY（パス）') : phase === 'waiting' ? '待機中…' : phase === 'anim' ? '交戦中' : '試合終了'}
-          {phase === 'plan' && timeLeft !== null && <span className={`timer ${timeLeft <= 10 ? 'warn' : ''}`}>{timeLeft}</span>}
-        </button>
+        <div className="dock-hand">
+          {/* Compact preview sits over the streak/chip rows, so the board and its zone headers stay visible. */}
+          {phase === 'plan' && selectedCard && (
+            <div className="preview">
+              <CardStrip cardId={selectedCard.cardId} />
+              <div className="preview-actions">
+                {selectedDef?.type === 'tactic' && selectedDef.target === 'none' ? (
+                  <button className="btn primary small" onClick={() => addAction({ t: 'tactic', hid: selectedCard.hid })}>使用する</button>
+                ) : (
+                  <span className="preview-hint">{hint}</span>
+                )}
+                <button className="btn ghost small" onClick={() => setSel(null)}>キャンセル</button>
+              </div>
+            </div>
+          )}
+
+          <div className="hand" style={{ '--n': Math.max(1, view.self.hand.length) } as CSSProperties}>
+            {view.self.hand.map((h) => {
+              const def = card(h.cardId);
+              const used = usedHids.has(h.hid);
+              return (
+                <HandCard
+                  key={h.hid}
+                  cardId={h.cardId}
+                  cost={def.cost}
+                  used={used}
+                  kira={hasKira({ kiraOwned }, h.cardId)}
+                  sign={hasSign({ signOwned }, h.cardId)}
+                  flow={hasFlow({ flowOwned }, h.cardId)}
+                  selected={sel?.kind === 'hand' && sel.hid === h.hid}
+                  disabled={!used && def.cost > credits}
+                  onClick={() => onHandClick(h.hid)}
+                />
+              );
+            })}
+            {view.self.hand.length === 0 && <div className="hand-empty">手札なし</div>}
+          </div>
+
+          <div className="action-bar">
+            <div className="credits" title="クレジット">
+              <Coins size={16} />
+              <b key={credits}>{credits}</b>
+              <span>¢</span>
+              {nextIncome > 0 && <small title="次ターンの基本収入">+{nextIncome}</small>}
+            </div>
+            <div className="deck-info">山札<b>{view.self.deckCount}</b></div>
+            <button
+              className={`btn small resupply-btn ${plan.actions.some((a) => a.t === 'resupply') ? 'queued' : ''}`}
+              disabled={phase !== 'plan'}
+              onClick={toggleResupply}
+              title="クレジットを払ってカードを1枚引く（使えるのは次のターンから・1ターン1回）"
+            >
+              補給<small>{RESUPPLY_COST}¢</small>
+            </button>
+            <button
+              key={hasActions ? 'go' : 'pass'}
+              className={`btn ready-btn ${hasActions ? 'primary go' : 'pass'} ${holding ? 'holding' : ''} ${timeWarn ? 'warn' : ''}`}
+              disabled={phase !== 'plan'}
+              onClick={(e) => { if (hasActions || e.detail === 0) submit(); }}
+              onPointerDown={startPassHold}
+              onPointerUp={() => endPassHold(true)}
+              onPointerLeave={() => endPassHold(false)}
+              onPointerCancel={() => endPassHold(false)}
+            >
+              {phase === 'plan' ? (
+                hasActions ? <><b>READY</b><span className="rb-count">▶ {plan.actions.length}</span></> : <><b>PASS</b><span className="rb-note">長押し</span></>
+              ) : (
+                <b className="rb-status">{phase === 'waiting' ? '待機中…' : phase === 'anim' ? '交戦中' : '試合終了'}</b>
+              )}
+              {phase === 'plan' && timeLeft !== null && (
+                <>
+                  <span className="timer">{timeLeft}</span>
+                  {conn.planSeconds && <i className="rb-timer" style={{ transform: `scaleX(${Math.max(0, timeLeft / conn.planSeconds)})` }} />}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* FX layer */}
@@ -1390,13 +1507,37 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
   );
 }
 
-function ScoreBar({ score, target, color }: { score: number; target: number; color: string }) {
+/** Counts from 0 to `target` with an ease-out-expo curve after `delay` ms. */
+function useCountUp(target: number, ms: number, delay = 0): number {
+  const [value, setValue] = useState(REDUCED_MOTION ? target : 0);
+  useEffect(() => {
+    if (REDUCED_MOTION) {
+      setValue(target);
+      return;
+    }
+    let raf = 0;
+    const start = window.setTimeout(() => {
+      const t0 = performance.now();
+      const step = (now: number) => {
+        const p = Math.min(1, (now - t0) / ms);
+        setValue(Math.round(target * (p >= 1 ? 1 : 1 - 2 ** (-10 * p))));
+        if (p < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    }, delay);
+    return () => {
+      window.clearTimeout(start);
+      cancelAnimationFrame(raf);
+    };
+  }, [target, ms, delay]);
+  return value;
+}
+
+/** Score pips grow outward from the turn display in the middle. `hot` = this side is on match point. */
+function ScorePips({ score, target, side, hot }: { score: number; target: number; side: 'me' | 'opp'; hot: boolean }) {
   return (
-    <div className="scorebar" style={{ '--c': color } as CSSProperties}>
-      <div className="scorebar-num"><b>{score}</b>/{target}</div>
-      <div className="scorebar-pips">
-        {Array.from({ length: target }, (_, i) => <span key={i} className={i < score ? 'on' : ''} />)}
-      </div>
+    <div className={`sb-pips ${side} ${hot ? 'hot' : ''}`} aria-label={`${score} / ${target}`}>
+      {Array.from({ length: target }, (_, i) => <span key={i} className={i < score ? 'on' : ''} />)}
     </div>
   );
 }
@@ -1411,10 +1552,14 @@ function ResultOverlay({ result, oppName, onRematch, onExit, canRematch }: {
   const { winner, me, view, reason } = result;
   const outcome = winner === 'draw' ? 'DRAW' : winner === me ? 'VICTORY' : 'DEFEAT';
   const color = winner === 'draw' ? '#c7d2de' : winner === me ? ME_COLOR : OPP_COLOR;
+  const rpShown = useCountUp(result.rp ?? 0, 800, 450);
   return (
     <div className="result-bg">
       <div className="result" style={{ '--c': color } as CSSProperties}>
-        <div className="result-title" data-text={outcome}>{outcome}</div>
+        <div className="result-title" data-text={outcome} aria-label={outcome}>
+          {[...outcome].map((ch, i) => <span key={i} style={{ '--i': i } as CSSProperties} aria-hidden>{ch}</span>)}
+        </div>
+        <i className="result-rule" aria-hidden />
         <div className="result-reason">{REASON_TEXT[reason] ?? reason}</div>
         <div className="result-score">
           <div><span>YOU</span><b>{view.self.score}</b></div>
@@ -1427,7 +1572,7 @@ function ResultOverlay({ result, oppName, onRematch, onExit, canRematch }: {
           <div><span>被キル</span><b>{view.opp.kills}</b></div>
         </div>
         {result.rp !== null && (
-          <div className={`result-rp ${result.rp > 0 ? 'up' : result.rp < 0 ? 'down' : ''}`}>{result.rp > 0 ? '+' : ''}{result.rp} RP</div>
+          <div className={`result-rp ${result.rp > 0 ? 'up' : result.rp < 0 ? 'down' : ''}`}>{rpShown > 0 ? '+' : ''}{rpShown} RP</div>
         )}
         <div className="result-btns">
           {canRematch && (

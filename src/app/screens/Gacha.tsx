@@ -140,7 +140,6 @@ export function Gacha({ profile, onChange, onBack }: {
       <div className="gacha-actions menu">
         <button
           className="hud-btn hud-main hud-primary"
-          style={{ '--a': '#ff4655' } as CSSProperties}
           disabled={!free}
           onClick={() => runPull('free')}
         >
@@ -151,7 +150,6 @@ export function Gacha({ profile, onChange, onBack }: {
         <div className="gacha-pull-row">
           <button
             className="hud-btn hud-main"
-            style={{ '--a': '#2ee6d6' } as CSSProperties}
             disabled={profile.gachaTickets < 1}
             onClick={() => runPull('ticket')}
           >

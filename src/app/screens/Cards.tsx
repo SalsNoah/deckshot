@@ -1,3 +1,4 @@
+import { Sparkles } from 'lucide-react';
 import { useMemo, useState, type CSSProperties } from 'react';
 import { ALL_CARDS, STREAK_ORDER, STREAKS, ZONE_MODS, type CardType } from '../../engine';
 import { countCosmetics, hasFlow, hasKira, hasSign, type Profile } from '../profile';
@@ -13,7 +14,7 @@ const TABS: { id: CardType | 'other'; name: string }[] = [
   { id: 'other', name: 'ストリーク/ゾーン' },
 ];
 
-export function Cards({ profile, onBack }: { profile: Profile; onBack: () => void }) {
+export function Cards({ profile, onBack, onPreview }: { profile: Profile; onBack: () => void; onPreview: () => void }) {
   const [tab, setTab] = useState<CardType | 'other'>('operator');
   const [peek, setPeek] = useState<string | null>(null);
   const list = ALL_CARDS.filter((c) => c.type === tab).sort((a, b) => a.cost - b.cost);
@@ -44,6 +45,9 @@ export function Cards({ profile, onBack }: { profile: Profile; onBack: () => voi
           <button key={t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>{t.name}</button>
         ))}
       </div>
+      <button className="btn small preview-link" style={{ '--a': '#e8a0ff' } as CSSProperties} onClick={onPreview}>
+        <Sparkles size={14} /> レアプレビュー（金枠・サイン・アニメ）
+      </button>
       {tab !== 'other' ? (
         <div className="card-grid">
           {list.map((c) => {

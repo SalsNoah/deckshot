@@ -64,7 +64,6 @@ export function Lobby({ name, deck, onStart, onBack }: {
         <div className="menu">
           <button
             className="hud-btn hud-main hud-primary"
-            style={{ '--a': '#ff4655' } as CSSProperties}
             disabled={!connected}
             onClick={() => clientRef.current?.quick()}
           >
@@ -74,7 +73,6 @@ export function Lobby({ name, deck, onStart, onBack }: {
           </button>
           <button
             className="hud-btn hud-main"
-            style={{ '--a': '#2ee6d6' } as CSSProperties}
             disabled={!connected}
             onClick={() => clientRef.current?.create()}
           >
