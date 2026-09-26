@@ -10,7 +10,7 @@ import {
 import { EMOTES, type EmoteId } from '../../net/protocol';
 import type { MatchConnection } from '../match';
 import { hasFlow, hasKira, hasSign } from '../profile';
-import { sfx, vibrate, type ShotKind } from '../sfx';
+import { setBgm, sfx, vibrate, type ShotKind } from '../sfx';
 import {
   CalloutView, CutInView, FxView, HS_COLOR, REVEAL_FLIP_AT, REVEAL_FLIP_GAP, RevealStage, revealItems,
   type Callout, type CalloutVariant, type CutIn, type Fx, type FxInput, type PopTone, type RevealState, type ZoneEffect,
@@ -789,9 +789,16 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
           setAnimSnap(ev.snap);
           await wait(500);
           const won = ev.winner === me;
-          if (ev.winner === 'draw') sfx.turn();
-          else if (won) sfx.victory();
-          else sfx.defeat();
+          if (ev.winner === 'draw') {
+            sfx.turn();
+            setBgm('menu');
+          } else if (won) {
+            sfx.victory();
+            setBgm('win');
+          } else {
+            sfx.defeat();
+            setBgm('lose');
+          }
           const r: MatchResult = {
             winner: ev.winner, reason: ev.reason, me, view: finalView,
             kills: finalView.self.kills, headshots: finalView.self.headshots, nuked: statsRef.current.nuked,
@@ -853,6 +860,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
         setOppReady(false);
         setTimeLeft(conn.planSeconds);
         statsRef.current.nuked = false;
+        setBgm('battle');
       },
     });
     return () => {

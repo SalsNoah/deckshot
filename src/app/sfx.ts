@@ -2,25 +2,39 @@
  * Procedural neon / cyberpunk SE (Web Audio) + looped MP3 BGM.
  */
 
+import { publicAsset } from './ui/assets';
+
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let seBus: GainNode | null = null;
 let noiseBuf: AudioBuffer | null = null;
 let enabled = true;
 
-export type BgmMode = 'off' | 'menu' | 'battle';
+export type BgmTrack = 'menu' | 'battle' | 'win' | 'lose' | 'gacha';
+export type BgmMode = 'off' | BgmTrack;
 
 let bgmMode: BgmMode = 'off';
-let menuBgm: HTMLAudioElement | null = null;
-let battleBgm: HTMLAudioElement | null = null;
-let activeBgm: HTMLAudioElement | null = null;
+const bgmEls: Partial<Record<BgmTrack, HTMLAudioElement>> = {};
+let activeTrack: BgmTrack | null = null;
+let unlockBound = false;
 
-const BGM_SRC = {
-  menu: '/audio/menu.mp3',
-  battle: '/audio/battle.mp3',
-} as const;
+const BGM_SRC: Record<BgmTrack, string> = {
+  menu: 'audio/menu.mp3',
+  battle: 'audio/battle.mp3',
+  win: 'audio/win.mp3',
+  lose: 'audio/lose.mp3',
+  gacha: 'audio/gacha.mp3',
+};
 
-const BGM_VOLUME = { menu: 0.45, battle: 0.5 } as const;
+const BGM_VOLUME: Record<BgmTrack, number> = {
+  menu: 0.45,
+  battle: 0.5,
+  win: 0.48,
+  lose: 0.45,
+  gacha: 0.48,
+};
+
+const BGM_TRACKS = Object.keys(BGM_SRC) as BgmTrack[];
 
 export function setSoundEnabled(on: boolean) {
   enabled = on;
@@ -63,32 +77,26 @@ function ac(): AudioContext | null {
 
 /** Call from a user gesture to unlock audio on mobile. */
 export function unlockAudio() {
+  // Resume Web Audio even if SE are currently muted — needed when toggling sound on.
+  const wasEnabled = enabled;
+  if (!enabled) enabled = true;
   ac();
+  if (!wasEnabled) enabled = false;
+
   ensureBgmElements();
-  if (bgmMode !== 'off' && enabled) {
-    playBgm(bgmMode);
-    return;
+  if (enabled && bgmMode !== 'off') playBgm(bgmMode);
+}
+
+/** Bind once: first pointer/key/touch starts BGM after autoplay policy blocks mount play. */
+export function bindAudioUnlock() {
+  if (unlockBound || typeof window === 'undefined') return;
+  unlockBound = true;
+  const once = () => {
+    unlockAudio();
+  };
+  for (const ev of ['pointerdown', 'keydown', 'touchstart'] as const) {
+    window.addEventListener(ev, once, { once: true, capture: true });
   }
-  // Prime autoplay unlock without leaving a track audible.
-  const probe = menuBgm ?? battleBgm;
-  if (!probe) return;
-  const wasMuted = probe.muted;
-  probe.muted = true;
-  void probe.play().then(() => {
-    if (activeBgm === probe) {
-      probe.muted = wasMuted;
-      return;
-    }
-    probe.pause();
-    try {
-      probe.currentTime = 0;
-    } catch {
-      // ignore
-    }
-    probe.muted = wasMuted;
-  }).catch(() => {
-    probe.muted = wasMuted;
-  });
 }
 
 function env(g: GainNode, t: number, peak: number, attack: number, decay: number) {
@@ -608,20 +616,22 @@ export const sfx = {
 /* ───────── BGM (looped MP3) ───────── */
 
 function makeBgm(src: string, volume: number): HTMLAudioElement {
-  const el = new Audio(src);
+  const el = new Audio(publicAsset(src));
   el.loop = true;
   el.preload = 'auto';
   el.volume = volume;
+  el.setAttribute('playsinline', 'true');
   return el;
 }
 
 function ensureBgmElements() {
-  if (!menuBgm) menuBgm = makeBgm(BGM_SRC.menu, BGM_VOLUME.menu);
-  if (!battleBgm) battleBgm = makeBgm(BGM_SRC.battle, BGM_VOLUME.battle);
+  for (const track of BGM_TRACKS) {
+    if (!bgmEls[track]) bgmEls[track] = makeBgm(BGM_SRC[track], BGM_VOLUME[track]);
+  }
 }
 
 function stopBgm() {
-  for (const el of [menuBgm, battleBgm]) {
+  for (const el of Object.values(bgmEls)) {
     if (!el) continue;
     el.pause();
     try {
@@ -630,16 +640,18 @@ function stopBgm() {
       // ignore seek errors before metadata
     }
   }
-  activeBgm = null;
+  activeTrack = null;
 }
 
-function playBgm(mode: 'menu' | 'battle') {
+function playBgm(mode: BgmTrack) {
+  if (!enabled) return;
   ensureBgmElements();
-  const next = mode === 'battle' ? battleBgm! : menuBgm!;
-  if (activeBgm === next && !next.paused) return;
+  const next = bgmEls[mode]!;
+  if (activeTrack === mode && !next.paused) return;
 
-  for (const el of [menuBgm, battleBgm]) {
-    if (!el || el === next) continue;
+  for (const track of BGM_TRACKS) {
+    const el = bgmEls[track];
+    if (!el || track === mode) continue;
     el.pause();
     try {
       el.currentTime = 0;
@@ -648,16 +660,20 @@ function playBgm(mode: 'menu' | 'battle') {
     }
   }
 
+  next.muted = false;
   next.volume = BGM_VOLUME[mode];
-  activeBgm = next;
+  activeTrack = mode;
   void next.play().catch(() => {
-    // Autoplay may be blocked until unlockAudio() runs from a gesture.
+    // Autoplay blocked until unlockAudio / bindAudioUnlock runs on a gesture.
+    if (activeTrack === mode) activeTrack = null;
   });
 }
 
 export function setBgm(mode: BgmMode) {
   if (bgmMode === mode) {
-    if (mode !== 'off' && enabled && (!activeBgm || activeBgm.paused)) playBgm(mode);
+    if (mode !== 'off' && enabled && (activeTrack !== mode || !!bgmEls[mode]?.paused)) {
+      playBgm(mode);
+    }
     return;
   }
   bgmMode = mode;

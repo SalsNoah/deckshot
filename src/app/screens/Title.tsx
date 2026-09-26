@@ -2,7 +2,7 @@ import { BookOpen, Bot, ChevronRight, Dices, Layers, LayoutGrid, Pencil, Ticket,
 import { useState, type CSSProperties } from 'react';
 import { canFreeGacha } from '../gacha';
 import { countCosmetics, isDeckReady, rankOf, type Profile } from '../profile';
-import { unlockAudio } from '../sfx';
+import { setBgm, setSoundEnabled, unlockAudio } from '../sfx';
 import { cssUrl } from '../ui/assets';
 import { KiraShineIcon, SignAIcon } from '../ui/icons';
 import { RankBadge } from '../ui/RankBadge';
@@ -44,8 +44,16 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
         <button
           className="icon-btn sound-toggle"
           onClick={() => {
-            unlockAudio();
-            onChange({ sound: !profile.sound });
+            const next = !profile.sound;
+            if (next) {
+              setSoundEnabled(true);
+              setBgm('menu');
+              unlockAudio();
+            } else {
+              setSoundEnabled(false);
+              setBgm('off');
+            }
+            onChange({ sound: next });
           }}
           aria-label="サウンド"
         >
