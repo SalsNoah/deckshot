@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit -p .",
     "sim": "tsx scripts/simulate.ts",
     "portraits:anim": "tsx scripts/gen-portrait-anims.ts",
+    "signatures:neon": "tsx scripts/process-signatures.ts",
     "cap:sync": "vite build && cap sync"
   },
   "engines": {

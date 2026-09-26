@@ -66,12 +66,12 @@ export function portraitAnimIds(): readonly string[] {
   return OPERATOR_ANIM_IDS;
 }
 
-/** Neon white-pen signature overlay (black backdrop screened out). */
+/** Transparent neon signature stamp overlaid on operator portraits. */
 export function SignatureMark({ cardId, className = '' }: { cardId: string; className?: string }) {
   return (
     <img
       className={`card-sign ${className}`.trim()}
-      src={publicAsset(`signatures/${cardId}.png`)}
+      src={publicAsset(`signatures/${cardId}.png?v=5`)}
       alt=""
       draggable={false}
       decoding="async"
