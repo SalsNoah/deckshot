@@ -173,6 +173,9 @@ class Resolver {
       case 'damageEnemiesInZone':
         if (zone !== undefined) this.areaDamage(this.enemiesIn(zone, p), effect.amount, source, killer);
         break;
+      case 'damageEnemiesEverywhere':
+        this.areaDamage(allUnits(g).filter((u) => u.owner !== p && u.hp > 0), effect.amount, source, killer);
+        break;
       case 'damageAllInZone':
         if (zone !== undefined) {
           const all = [...g.zones[zone].units[0], ...g.zones[zone].units[1]].filter((u) => u.hp > 0);
@@ -320,10 +323,13 @@ class Resolver {
     this.tier += 1;
     const shots: { u: Unit; tgt: Unit; atk: number }[] = [];
     for (const u of shooters) {
-      const tgt = this.chooseTarget(u);
-      if (!tgt) continue;
-      const atk = effAtk(g, u) - (tgt.zone !== u.zone ? LONG_SHOT_PENALTY : 0);
-      if (atk > 0) shots.push({ u, tgt, atk });
+      const targets = hasAbility(u, 'sweep')
+        ? g.zones[u.zone].units[other(u.owner)].filter((e) => e.hp > 0 && !isStealthed(g, e))
+        : [this.chooseTarget(u)].filter((t): t is Unit => !!t);
+      for (const tgt of targets) {
+        const atk = effAtk(g, u) - (tgt.zone !== u.zone ? LONG_SHOT_PENALTY : 0);
+        if (atk > 0) shots.push({ u, tgt, atk });
+      }
     }
     if (shots.length === 0) return [];
 
@@ -502,7 +508,8 @@ class Resolver {
       z.controller = a > 0 && b === 0 ? 0 : b > 0 && a === 0 ? 1 : null;
       if (z.controller === null) continue;
       const pl = g.players[z.controller];
-      const pts = zoneValue(z.modId, g.turn) + bonus[z.controller];
+      const capture = z.units[z.controller].reduce((s, u) => s + abilityN(u, 'capture'), 0);
+      const pts = zoneValue(z.modId, g.turn) + bonus[z.controller] + capture;
       pl.score += pts;
       held[z.controller] += 1;
       if (z.modId === 'supply') pl.bonusNextTurn += 2;

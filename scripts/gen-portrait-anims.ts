@@ -24,6 +24,7 @@ const OPERATORS = [
   'pup', 'bit', 'lace', 'mochi', 'chirp', 'nibble', 'silk', 'bean',
   'ember', 'frost', 'lock', 'key', 'nova', 'orbit', 'fang', 'claw', 'volt', 'amp',
   'chum', 'dot',
+  'beacon', 'brute', 'salvo', 'goliath', 'juggernaut', 'havoc',
 ] as const;
 type OperatorId = (typeof OPERATORS)[number];
 
@@ -60,7 +61,11 @@ type Tuning = {
 };
 
 // Cut-outs for these portraits lose most of the character; animate without layer separation.
-const NO_CUTOUT = new Set<OperatorId>(['ghost', 'shard', 'spark', 'dot']);
+// New operators also skip cutout when local ONNX rembg OOMs at 1024 (still get aura motion).
+const NO_CUTOUT = new Set<OperatorId>([
+  'ghost', 'shard', 'spark', 'dot',
+  'beacon', 'brute', 'salvo', 'goliath', 'juggernaut', 'havoc',
+]);
 
 const TUNING: Partial<Record<OperatorId, Tuning>> = {
   kingpin: { auraFlow: 0.3, bgPulses: true },

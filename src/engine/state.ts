@@ -180,7 +180,7 @@ export function effAtk(g: Board, u: Unit): number {
   if (u.weapon) v += card(u.weapon).mods?.atk ?? 0;
   const mod = g.zones[u.zone].modId;
   if (mod === 'cqb') v += 1;
-  if (mod === 'longrange' && hasAbility(u, 'snipe')) v += 2;
+  if (mod === 'longrange' && (card(u.cardId).role === 'sniper' || hasAbility(u, 'snipe'))) v += 2;
   const allies = g.zones[u.zone].units[u.owner].filter((a) => a.uid !== u.uid && a.hp > 0);
   if (hasAbility(u, 'lonely') && allies.length === 0) v += abilityN(u, 'lonely') || 3;
   if (hasAbility(u, 'crowd')) v += allies.length;

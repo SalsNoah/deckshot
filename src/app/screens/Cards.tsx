@@ -52,6 +52,8 @@ export function Cards({ profile, onBack, onPreview }: { profile: Profile; onBack
         <div className="card-grid">
           {list.map((c) => {
             const n = profile.owned[c.id] ?? 0;
+            const kiraN = profile.kiraOwned?.[c.id] ?? 0;
+            const signN = profile.signOwned?.[c.id] ?? 0;
             const showKira = hasKira(profile, c.id);
             const showSign = hasSign(profile, c.id);
             const showFlow = hasFlow(profile, c.id);
@@ -68,6 +70,16 @@ export function Cards({ profile, onBack, onPreview }: { profile: Profile; onBack
                   onClick={() => !locked && setPeek(c.id)}
                 />
                 <span className="collect-count">{locked ? '未所持' : `×${n}`}</span>
+                {!locked && c.type === 'operator' && (
+                  <span className="collect-cosmetics" aria-label={`キラ ${kiraN}、サイン ${signN}`}>
+                    <span className={`cosmetic-chip kira ${kiraN <= 0 ? 'empty' : ''}`}>
+                      <KiraShineIcon size={10} /><b>{kiraN}</b>
+                    </span>
+                    <span className={`cosmetic-chip sign ${signN <= 0 ? 'empty' : ''}`}>
+                      <SignAIcon size={10} /><b>{signN}</b>
+                    </span>
+                  </span>
+                )}
               </div>
             );
           })}

@@ -1,10 +1,9 @@
 import { BookOpen, Bot, ChevronRight, Dices, Layers, LayoutGrid, Pencil, Ticket, Volume2, VolumeX, Wifi } from 'lucide-react';
 import { useState, type CSSProperties } from 'react';
 import { canFreeGacha } from '../gacha';
-import { countCosmetics, isDeckReady, rankOf, type Profile } from '../profile';
+import { isDeckReady, rankOf, type Profile } from '../profile';
 import { setBgm, setSoundEnabled, unlockAudio } from '../sfx';
 import { cssUrl } from '../ui/assets';
-import { KiraShineIcon, SignAIcon } from '../ui/icons';
 import { RankBadge } from '../ui/RankBadge';
 
 export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, onDeckEdit, onGacha }: {
@@ -23,7 +22,6 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
   const games = profile.wins + profile.losses + profile.draws;
   const ready = isDeckReady(profile);
   const freeGacha = canFreeGacha(profile.lastFreeGacha);
-  const cosmetics = countCosmetics(profile);
 
   const commitName = () => {
     const n = name.trim().slice(0, 12);
@@ -34,18 +32,12 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
   return (
     <div className="screen title-screen has-art-bg" style={{ '--screen-bg': cssUrl('bgs/bg-title.webp') } as CSSProperties}>
       <div className="title-top">
-        <button
-          className={`ticket-chip ${freeGacha ? 'has-free' : ''}`}
-          onClick={onGacha}
-          aria-label={`チケット ${profile.gachaTickets}枚${freeGacha ? '・無料ガチャあり' : ''}`}
-        >
-          <Ticket size={14} />TICKET<b>×{profile.gachaTickets}</b>
-        </button>
+        <span className="title-top-spacer" aria-hidden />
         <button
           className="icon-btn sound-toggle"
           onClick={() => {
-            const next = !profile.sound;
-            if (next) {
+            const nextSound = !profile.sound;
+            if (nextSound) {
               setSoundEnabled(true);
               setBgm('menu');
               unlockAudio();
@@ -53,7 +45,7 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
               setSoundEnabled(false);
               setBgm('off');
             }
-            onChange({ sound: next });
+            onChange({ sound: nextSound });
           }}
           aria-label="サウンド"
         >
@@ -100,40 +92,40 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
         </div>
       </div>
 
-      <div className="hud-grid title-tiles">
-        <button className="hud-btn hud-tile" onClick={onDeckEdit}>
-          <LayoutGrid size={18} className="hud-tile-ico" />
-          <b>DECK</b><small>デッキ編成</small>
-        </button>
-        <button className={`hud-btn hud-tile ${freeGacha ? 'is-live' : ''}`} onClick={onGacha}>
-          <Dices size={18} className="hud-tile-ico" />
-          <b>SUPPLY</b><small>ガチャ</small>
-          {freeGacha && <span className="menu-badge">無料</span>}
-        </button>
-        <button className="hud-btn hud-tile" onClick={onCards}>
-          <Layers size={18} className="hud-tile-ico" />
-          <b>ARSENAL</b><small>カード一覧</small>
-          <span className="cosmetic-counts tile" aria-label={`金枠 ${cosmetics.kira}、サイン ${cosmetics.sign}`}>
-            <span className="cosmetic-chip kira"><KiraShineIcon size={11} /><b>{cosmetics.kira}</b></span>
-            <span className="cosmetic-chip sign"><SignAIcon size={11} /><b>{cosmetics.sign}</b></span>
-          </span>
-        </button>
-        <button className="hud-btn hud-tile" onClick={onHowTo}>
-          <BookOpen size={18} className="hud-tile-ico" />
-          <b>BRIEFING</b><small>遊び方</small>
-        </button>
-      </div>
-
       <div className="title-cta">
-        <button className="hud-btn hud-main" onClick={onCpu} disabled={!ready}>
-          <span className="hud-ico"><Bot size={20} /></span>
-          <span className="hud-txt"><b>CPU BATTLE</b><small>CPU対戦{!ready ? '（デッキ未完成）' : ''}</small></span>
-          <ChevronRight className="hud-go" size={20} />
-        </button>
         <button className="hud-btn hud-main hud-primary" onClick={onOnline} disabled={!ready}>
           <span className="hud-ico"><Wifi size={24} /></span>
           <span className="hud-txt"><b>ONLINE BATTLE</b><small>オンライン対戦{!ready ? '（デッキ未完成）' : ''}</small></span>
           <ChevronRight className="hud-go" size={24} />
+        </button>
+        <button className="hud-btn hud-main hud-secondary" onClick={onCpu} disabled={!ready}>
+          <span className="hud-ico"><Bot size={18} /></span>
+          <span className="hud-txt"><b>CPU BATTLE</b><small>CPU対戦{!ready ? '（デッキ未完成）' : ''}</small></span>
+          <ChevronRight className="hud-go" size={18} />
+        </button>
+      </div>
+
+      <div className="hud-grid title-tiles">
+        <button className="hud-btn hud-tile tile-deck" onClick={onDeckEdit}>
+          <LayoutGrid size={18} className="hud-tile-ico" />
+          <b>DECK</b><small>デッキ編成</small>
+        </button>
+        <button className={`hud-btn hud-tile tile-gacha ${freeGacha ? 'is-live' : ''}`} onClick={onGacha}>
+          <Dices size={18} className="hud-tile-ico" />
+          <b>SUPPLY</b><small>ガチャ</small>
+          <span className="tile-tickets" aria-label={`チケット ${profile.gachaTickets}枚`}>
+            <Ticket size={12} />
+            <b>×{profile.gachaTickets}</b>
+          </span>
+          {freeGacha && <span className="menu-badge">無料</span>}
+        </button>
+        <button className="hud-btn hud-tile tile-cards" onClick={onCards}>
+          <Layers size={18} className="hud-tile-ico" />
+          <b>ARSENAL</b><small>カード一覧</small>
+        </button>
+        <button className="hud-btn hud-tile tile-howto" onClick={onHowTo}>
+          <BookOpen size={18} className="hud-tile-ico" />
+          <b>BRIEFING</b><small>遊び方</small>
         </button>
       </div>
     </div>

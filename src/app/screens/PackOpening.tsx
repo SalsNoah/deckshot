@@ -1,7 +1,7 @@
 import { Check, Dices, FastForward, Layers } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import { card, type Rarity } from '../../engine';
-import { sfx, vibrate } from '../sfx';
+import { sfx, setBgmGain, vibrate } from '../sfx';
 import { publicAsset } from '../ui/assets';
 import { CardDetail, HandCard } from '../ui/cards';
 import { RARITY_COLOR } from '../ui/icons';
@@ -96,8 +96,15 @@ export function PackOpening({ cards, kira, sign, fresh, quick, onClose, onAgain,
   };
   useEffect(() => {
     const pending = timers;
-    return () => pending.current.forEach((t) => window.clearTimeout(t));
+    return () => {
+      pending.current.forEach((t) => window.clearTimeout(t));
+      setBgmGain(1);
+    };
   }, []);
+
+  useEffect(() => {
+    if (phase === 'done') setBgmGain(1);
+  }, [phase]);
 
   const go = (p: Phase) => {
     phaseRef.current = p;
@@ -295,6 +302,7 @@ export function PackOpening({ cards, kira, sign, fresh, quick, onClose, onAgain,
   const tear = () => {
     if (phaseRef.current !== 'ready') return;
     tornAt.current = Date.now();
+    setBgmGain(0.35);
     const shown: Hint = promo ? 'epic' : hint;
     go('tear');
     setSeam(shown);

@@ -50,6 +50,9 @@ function unitValue(g: GameState, u: Unit): number {
       case 'leader': case 'suppress': v += 1; break;
       case 'trap': v += 1; break;
       case 'bond': v += 1.2; break;
+      case 'berserk': v += 1; break;
+      case 'sweep': v += 4; break;
+      case 'capture': v += 3 * a.n; break;
       default: break;
     }
   }

@@ -13,7 +13,7 @@ const operators: CardDef[] = [
   {
     id: 'jolt', name: 'ジョルト', en: 'JOLT', type: 'operator', cost: 2, rarity: 'common', role: 'assault',
     atk: 2, hp: 3, aim: 6, abilities: [{ k: 'flank' }],
-    text: '【裏取り】配置したターンAIM+3、ガードを無視。', flavor: 'エントリーは任せろ。',
+    text: '配置したターン、AIM+3・ガードを無視して撃つ。', flavor: 'エントリーは任せろ。',
   },
   {
     id: 'bulwark', name: 'ブルワーク', en: 'BULWARK', type: 'operator', cost: 2, rarity: 'common', role: 'tank',
@@ -28,12 +28,12 @@ const operators: CardDef[] = [
   {
     id: 'wire', name: 'ワイヤー', en: 'WIRE', type: 'operator', cost: 2, rarity: 'common', role: 'support',
     atk: 1, hp: 3, aim: 3, abilities: [{ k: 'trap', n: 2 }],
-    text: '【トラップ2】このゾーンに敵が配置・移動してきたら、その敵に2ダメージ。', flavor: '足元注意だ。',
+    text: 'このゾーンに敵が配置・移動してきたら、その敵に2ダメージ。', flavor: '足元注意だ。',
   },
   {
     id: 'kingpin', name: 'キングピン', en: 'KINGPIN', type: 'operator', cost: 2, rarity: 'rare', role: 'support',
     atk: 2, hp: 3, aim: 3, abilities: [{ k: 'eco', n: 1 }],
-    text: '【エコ1】ターン開始時+1¢。', flavor: '金で買えない勝利はない。',
+    text: 'ターン開始時+1¢。', flavor: '金で買えない勝利はない。',
   },
   {
     id: 'blitz', name: 'ブリッツ', en: 'BLITZ', type: 'operator', cost: 3, rarity: 'rare', role: 'assault',
@@ -47,23 +47,23 @@ const operators: CardDef[] = [
   },
   {
     id: 'ghost', name: 'ゴースト', en: 'GHOST', type: 'operator', cost: 3, rarity: 'rare', role: 'assault',
-    atk: 3, hp: 2, aim: 6, abilities: [{ k: 'stealth' }],
-    text: '【ステルス】配置したターンは射撃の対象にならない。', flavor: '足音はしなかった。',
+    atk: 3, hp: 3, aim: 6, abilities: [{ k: 'stealth' }],
+    text: '【潜伏】', flavor: '足音はしなかった。',
   },
   {
     id: 'angel', name: 'エンジェル', en: 'ANGEL', type: 'operator', cost: 3, rarity: 'rare', role: 'support',
     atk: 2, hp: 4, aim: 3, abilities: [{ k: 'medic', n: 2 }],
-    text: '【メディック2】ターン終了時、このゾーンの味方全員のHPを2回復。', flavor: '死ぬのは許可してない。',
+    text: 'ターン終了時、このゾーンの味方全員のHPを2回復。', flavor: '死ぬのは許可してない。',
   },
   {
     id: 'banshee', name: 'バンシー', en: 'BANSHEE', type: 'operator', cost: 3, rarity: 'rare', role: 'support',
     atk: 2, hp: 4, aim: 5, abilities: [{ k: 'suppress', n: 2 }],
-    text: '【制圧2】このゾーンの敵のAIM-2。', flavor: '頭を上げたら終わりだよ。',
+    text: 'このゾーンの敵のAIM-2。', flavor: '頭を上げたら終わりだよ。',
   },
   {
     id: 'hawk', name: 'ホーク', en: 'HAWK', type: 'operator', cost: 4, rarity: 'rare', role: 'sniper',
     atk: 3, hp: 2, aim: 4, abilities: [{ k: 'snipe' }],
-    text: '【狙撃】', flavor: 'ワンショット、ワンキル。',
+    text: 'ATKが最も高い敵をガード無視で狙う。自ゾーンに敵がいなければ隣のゾーンを撃つ（ダメージ-1）。', flavor: 'ワンショット、ワンキル。',
   },
   {
     id: 'reaper', name: 'リーパー', en: 'REAPER', type: 'operator', cost: 4, rarity: 'epic', role: 'assault',
@@ -73,124 +73,125 @@ const operators: CardDef[] = [
   {
     id: 'vanguard', name: 'ヴァンガード', en: 'VANGUARD', type: 'operator', cost: 4, rarity: 'epic', role: 'tank',
     atk: 3, hp: 6, aim: 4, abilities: [{ k: 'guard' }, { k: 'leader', n: 1 }],
-    text: '【ガード】【指揮1】このゾーンの他の味方AIM+1。', flavor: '俺に続け！',
+    text: '【ガード】このゾーンの他の味方のAIM+1。', flavor: '俺に続け！',
   },
   {
     id: 'titan', name: 'タイタン', en: 'TITAN', type: 'operator', cost: 5, rarity: 'epic', role: 'tank',
-    atk: 3, hp: 7, aim: 2, abilities: [{ k: 'guard' }, { k: 'armored' }],
+    atk: 4, hp: 7, aim: 3, abilities: [{ k: 'guard' }, { k: 'armored' }],
     text: '【ガード】【防弾】', flavor: '鉄の壁、歩く要塞。',
   },
   {
     id: 'ace', name: 'エース', en: 'ACE', type: 'operator', cost: 6, rarity: 'legend', role: 'assault',
-    atk: 4, hp: 5, aim: 8, abilities: [{ k: 'chain' }],
-    text: '【連鎖】キルするたびもう一度撃つ（最大+2回）。', flavor: '1v5？ ちょうどいい。',
+    atk: 5, hp: 6, aim: 8, abilities: [{ k: 'chain' }],
+    text: 'キルするたび、もう一度撃つ（1ターン最大+2回）。', flavor: '1v5？ ちょうどいい。',
   },
   {
     id: 'deadeye', name: 'デッドアイ', en: 'DEADEYE', type: 'operator', cost: 6, rarity: 'legend', role: 'sniper',
-    atk: 5, hp: 4, aim: 5, abilities: [{ k: 'snipe' }, { k: 'pierce' }],
-    text: '【狙撃】【貫通】', flavor: '2km先の心臓まで見える。',
+    atk: 5, hp: 4, aim: 6, abilities: [{ k: 'snipe' }, { k: 'pierce' }],
+    text: 'ATKが最も高い敵をガード無視で狙う。自ゾーンに敵がいなければ隣のゾーンを撃つ（ダメージ-1）。倒した敵に余ったダメージは次の敵へ。',
+    flavor: '2km先の心臓まで見える。',
   },
   {
     id: 'shard', name: 'シャード', en: 'SHARD', type: 'operator', cost: 4, rarity: 'epic', role: 'assault',
     atk: 7, hp: 1, aim: 8,
-    text: 'ATK7 / HP1。ガラスの刃。', flavor: '割れなければ、切れる。',
+    text: '', flavor: '割れなければ、切れる。',
   },
   {
     id: 'anchor', name: 'アンカー', en: 'ANCHOR', type: 'operator', cost: 4, rarity: 'rare', role: 'tank',
     atk: 0, hp: 10, aim: 1, abilities: [{ k: 'guard' }, { k: 'armored' }],
-    text: 'ATK0。【ガード】【防弾】動く掩体。', flavor: 'ここから先は通さない。',
+    text: '【ガード】【防弾】', flavor: 'ここから先は通さない。',
   },
   {
     id: 'mimic', name: 'ミミック', en: 'MIMIC', type: 'operator', cost: 4, rarity: 'epic', role: 'assault',
     atk: 1, hp: 2, aim: 3, abilities: [{ k: 'mimic' }],
-    text: '【擬態】配置時：このゾーンで最もATKが高い敵のATK/HP/AIMをコピー。', flavor: '見た目は敵、中身も敵。',
+    text: '配置時：このゾーンで最もATKが高い敵のATK/HP/AIMをコピーする。', flavor: '見た目は敵、中身も敵。',
   },
   {
     id: 'widow', name: 'ウィドウ', en: 'WIDOW', type: 'operator', cost: 5, rarity: 'epic', role: 'sniper',
     atk: 2, hp: 3, aim: 5, abilities: [{ k: 'bane' }],
-    text: '【必殺】このユニットがダメージを与えた敵は即死する。', flavor: 'かすっただけで終わりだ。',
+    text: '【必殺】', flavor: 'かすっただけで終わりだ。',
   },
   {
     id: 'leech', name: 'リーチ', en: 'LEECH', type: 'operator', cost: 3, rarity: 'rare', role: 'assault',
-    atk: 2, hp: 4, aim: 4, abilities: [{ k: 'drain' }],
-    text: '【吸血】射撃で与えたダメージ分、自身のHPを回復。', flavor: '血は燃料だ。',
+    atk: 3, hp: 3, aim: 4, abilities: [{ k: 'drain' }],
+    text: '【吸血】', flavor: '血は燃料だ。',
   },
   {
     id: 'blast', name: 'ブラスト', en: 'BLAST', type: 'operator', cost: 4, rarity: 'rare', role: 'support',
-    atk: 2, hp: 3, aim: 3, abilities: [{ k: 'lastWords', effect: { kind: 'damageEnemiesInZone', amount: 3 } }],
-    text: '【遺言】破壊時：このゾーンの敵全員に3ダメージ。', flavor: '死んでも爆弾は残る。',
+    atk: 2, hp: 4, aim: 3, abilities: [{ k: 'lastWords', effect: { kind: 'damageEnemiesInZone', amount: 3 } }],
+    text: '破壊されたとき：このゾーンの敵全員に3ダメージ。', flavor: '死んでも爆弾は残る。',
   },
   {
     id: 'martyr', name: 'マーター', en: 'MARTYR', type: 'operator', cost: 2, rarity: 'epic', role: 'support',
     atk: 1, hp: 2, aim: 4, abilities: [{ k: 'lastWords', effect: { kind: 'damageAllInZone', amount: 2 } }],
-    text: '【遺言】破壊時：このゾーンの全員（味方含む）に2ダメージ。', flavor: '一緒に逝こうぜ。',
+    text: '破壊されたとき：このゾーンの全員（味方含む）に2ダメージ。', flavor: '一緒に逝こうぜ。',
   },
   {
     id: 'phoenix', name: 'フェニックス', en: 'PHOENIX', type: 'operator', cost: 4, rarity: 'epic', role: 'assault',
-    atk: 3, hp: 3, aim: 4, abilities: [{ k: 'phoenix' }],
-    text: '【不死鳥】初めて致命傷を受けたとき、HP1で耐える（1回のみ）。', flavor: '灰から立ち上がる。',
+    atk: 3, hp: 4, aim: 4, abilities: [{ k: 'phoenix' }],
+    text: '初めて致命傷を受けたとき、HP1で耐える（1回のみ）。', flavor: '灰から立ち上がる。',
   },
   {
     id: 'pack', name: 'パック', en: 'PACK', type: 'operator', cost: 3, rarity: 'rare', role: 'assault',
-    atk: 1, hp: 4, aim: 3, abilities: [{ k: 'crowd' }],
-    text: '【群れ】同じゾーンの他の味方1体につきATK+1。', flavor: '狼は群れで狩る。',
+    atk: 2, hp: 5, aim: 3, abilities: [{ k: 'crowd' }],
+    text: '同じゾーンの他の味方1体につきATK+1。', flavor: '狼は群れで狩る。',
   },
   {
     id: 'lonewolf', name: 'ローンウルフ', en: 'LONEWOLF', type: 'operator', cost: 3, rarity: 'rare', role: 'assault',
     atk: 2, hp: 3, aim: 5, abilities: [{ k: 'lonely', n: 3 }],
-    text: '【孤高】同じゾーンに味方がいなければATK+3。', flavor: '一人のほうがマシだ。',
+    text: '同じゾーンに他の味方がいなければATK+3。', flavor: '一人のほうがマシだ。',
   },
   {
     id: 'scav', name: 'スキャヴ', en: 'SCAV', type: 'operator', cost: 3, rarity: 'rare', role: 'assault',
     atk: 2, hp: 3, aim: 4, abilities: [{ k: 'scavenge' }],
-    text: '【漁り】同じゾーンの味方が破壊されるたび、ATK+1・最大HP+1・HP+1。', flavor: '死体からも戦利品。',
+    text: '同じゾーンの味方が破壊されるたび、ATK+1・最大HP+1・HP+1。', flavor: '死体からも戦利品。',
   },
   {
     id: 'spark', name: 'スパーク', en: 'SPARK', type: 'operator', cost: 2, rarity: 'epic', role: 'assault',
     atk: 5, hp: 2, aim: 7, abilities: [{ k: 'ephemeral' }],
-    text: '【消滅】ターン終了時に破壊される。', flavor: '一瞬の閃光。',
+    text: 'ターン終了時に破壊される。', flavor: '一瞬の閃光。',
   },
 
   // ── Cute motif (8) ──
   {
     id: 'pup', name: 'パップ', en: 'PUP', type: 'operator', cost: 2, rarity: 'common', role: 'assault',
-    atk: 2, hp: 3, aim: 5, abilities: [{ k: 'flank' }],
-    text: '【裏取り】配置したターンAIM+3、ガードを無視。', flavor: 'ワン！ …じゃなくて、突入！',
+    atk: 3, hp: 1, aim: 5, abilities: [{ k: 'flank' }],
+    text: '配置したターン、AIM+3・ガードを無視して撃つ。', flavor: 'ワン！ …じゃなくて、突入！',
   },
   {
     id: 'bit', name: 'ビット', en: 'BIT', type: 'operator', cost: 1, rarity: 'common', role: 'support',
-    atk: 1, hp: 2, aim: 5, abilities: [{ k: 'onDeploy', effect: { kind: 'draw', amount: 1 } }],
-    text: '配置時：カードを1枚引く。', flavor: 'ボク、見つけたよ！',
+    atk: 0, hp: 2, aim: 3, abilities: [{ k: 'onDeploy', effect: { kind: 'creditsNextTurn', amount: 2 } }],
+    text: '配置時：次のターン+2¢。', flavor: 'ボク、見つけたよ！',
   },
   {
     id: 'lace', name: 'レース', en: 'LACE', type: 'operator', cost: 2, rarity: 'common', role: 'support',
     atk: 1, hp: 3, aim: 3, abilities: [{ k: 'medic', n: 1 }],
-    text: '【メディック1】ターン終了時、このゾーンの味方全員のHPを1回復。', flavor: '痛いの痛いの飛んでけ〜。',
+    text: 'ターン終了時、このゾーンの味方全員のHPを1回復。', flavor: '痛いの痛いの飛んでけ〜。',
   },
   {
     id: 'mochi', name: 'モチ', en: 'MOCHI', type: 'operator', cost: 2, rarity: 'common', role: 'tank',
-    atk: 1, hp: 5, aim: 2, abilities: [{ k: 'guard' }],
-    text: '【ガード】', flavor: 'ぷにぷにでも盾は盾。',
+    atk: 0, hp: 5, aim: 1, abilities: [{ k: 'guard' }, { k: 'berserk', n: 1 }],
+    text: '【ガード】【狂化】', flavor: 'ぷにぷに。でも、つつかれたら怒る。',
   },
   {
     id: 'chirp', name: 'チャープ', en: 'CHIRP', type: 'operator', cost: 2, rarity: 'rare', role: 'assault',
-    atk: 1, hp: 2, aim: 6, abilities: [{ k: 'stealth' }],
-    text: '【ステルス】配置したターンは射撃の対象にならない。', flavor: 'ちゅん、って消えた。',
+    atk: 2, hp: 1, aim: 7, abilities: [{ k: 'stealth' }],
+    text: '【潜伏】', flavor: 'ちゅん、って消えた。',
   },
   {
-    id: 'nibble', name: 'ニブル', en: 'NIBBLE', type: 'operator', cost: 2, rarity: 'common', role: 'support',
-    atk: 1, hp: 3, aim: 3, abilities: [{ k: 'trap', n: 1 }],
-    text: '【トラップ1】このゾーンに敵が配置・移動してきたら、その敵に1ダメージ。', flavor: 'かじったら痛いよ？',
+    id: 'nibble', name: 'ニブル', en: 'NIBBLE', type: 'operator', cost: 1, rarity: 'common', role: 'support',
+    atk: 1, hp: 2, aim: 2, abilities: [{ k: 'trap', n: 1 }],
+    text: 'このゾーンに敵が配置・移動してきたら、その敵に1ダメージ。', flavor: 'かじったら痛いよ？',
   },
   {
     id: 'silk', name: 'シルク', en: 'SILK', type: 'operator', cost: 3, rarity: 'rare', role: 'sniper',
-    atk: 2, hp: 2, aim: 4, abilities: [{ k: 'snipe' }],
-    text: '【狙撃】', flavor: 'ふわふわ照準、ぴたり。',
+    atk: 2, hp: 3, aim: 3, abilities: [{ k: 'snipe' }],
+    text: 'ATKが最も高い敵をガード無視で狙う。自ゾーンに敵がいなければ隣のゾーンを撃つ（ダメージ-1）。', flavor: 'ふわふわ照準、ぴたり。',
   },
   {
     id: 'bean', name: 'ビーン', en: 'BEAN', type: 'operator', cost: 2, rarity: 'rare', role: 'assault',
-    atk: 2, hp: 2, aim: 5, abilities: [{ k: 'crowd' }],
-    text: '【群れ】同じゾーンの他の味方1体につきATK+1。', flavor: 'ちびっ子部隊、集合！',
+    atk: 1, hp: 2, aim: 5, abilities: [{ k: 'crowd' }],
+    text: '同じゾーンの他の味方1体につきATK+1。', flavor: 'ちびっ子部隊、集合！',
   },
 
   // ── Partner bonds (10 = 5 pairs) ──
@@ -202,7 +203,8 @@ const operators: CardDef[] = [
   {
     id: 'frost', name: 'フロスト', en: 'FROST', type: 'operator', cost: 3, rarity: 'rare', role: 'sniper',
     atk: 2, hp: 3, aim: 4, abilities: [{ k: 'bond', with: 'ember', aim: 3 }, { k: 'snipe' }],
-    text: '【狙撃】【絆：エンバー】同じゾーンにいるときAIM+3。', flavor: '熱がなければ、狙いは定まる。',
+    text: '【絆：エンバー】同じゾーンにいるときAIM+3。ATKが最も高い敵をガード無視で狙う。自ゾーンに敵がいなければ隣のゾーンを撃つ（ダメージ-1）。',
+    flavor: '熱がなければ、狙いは定まる。',
   },
   {
     id: 'lock', name: 'ロック', en: 'LOCK', type: 'operator', cost: 3, rarity: 'rare', role: 'tank',
@@ -212,26 +214,26 @@ const operators: CardDef[] = [
   {
     id: 'key', name: 'キー', en: 'KEY', type: 'operator', cost: 3, rarity: 'rare', role: 'assault',
     atk: 2, hp: 3, aim: 5, abilities: [{ k: 'flank' }, { k: 'bond', with: 'lock', atk: 2 }],
-    text: '【裏取り】【絆：ロック】同じゾーンにいるときATK+2。', flavor: '鍵穴を開けたら、突っ込むだけ。',
+    text: '【絆：ロック】同じゾーンにいるときATK+2。配置したターン、AIM+3・ガードを無視して撃つ。', flavor: '鍵穴を開けたら、突っ込むだけ。',
   },
   {
     id: 'nova', name: 'ノヴァ', en: 'NOVA', type: 'operator', cost: 4, rarity: 'epic', role: 'assault',
-    atk: 3, hp: 3, aim: 5, abilities: [{ k: 'bond', with: 'orbit', atk: 2, aim: 1 }],
+    atk: 3, hp: 4, aim: 5, abilities: [{ k: 'bond', with: 'orbit', atk: 2, aim: 1 }],
     text: '【絆：オービット】同じゾーンにいるときATK+2・AIM+1。', flavor: '衛星が回りだしたら、爆発だ。',
   },
   {
     id: 'orbit', name: 'オービット', en: 'ORBIT', type: 'operator', cost: 3, rarity: 'epic', role: 'support',
     atk: 1, hp: 4, aim: 4, abilities: [{ k: 'leader', n: 1 }, { k: 'bond', with: 'nova', aim: 2 }],
-    text: '【指揮1】【絆：ノヴァ】同じゾーンにいるときAIM+2。', flavor: '恒星のそばが、一番安定する。',
+    text: '【絆：ノヴァ】同じゾーンにいるときAIM+2。このゾーンの他の味方のAIM+1。', flavor: '恒星のそばが、一番安定する。',
   },
   {
     id: 'fang', name: 'ファング', en: 'FANG', type: 'operator', cost: 3, rarity: 'rare', role: 'assault',
-    atk: 2, hp: 3, aim: 5, abilities: [{ k: 'bond', with: 'claw', atk: 1, aim: 1 }],
+    atk: 3, hp: 2, aim: 5, abilities: [{ k: 'bond', with: 'claw', atk: 1, aim: 1 }],
     text: '【絆：クロウ】同じゾーンにいるときATK+1・AIM+1。', flavor: '牙だけでは足りない。爪が要る。',
   },
   {
     id: 'claw', name: 'クロウ', en: 'CLAW', type: 'operator', cost: 3, rarity: 'rare', role: 'assault',
-    atk: 2, hp: 3, aim: 5, abilities: [{ k: 'bond', with: 'fang', atk: 1, aim: 1 }],
+    atk: 2, hp: 4, aim: 4, abilities: [{ k: 'bond', with: 'fang', atk: 1, aim: 1 }],
     text: '【絆：ファング】同じゾーンにいるときATK+1・AIM+1。', flavor: '爪だけでは足りない。牙が要る。',
   },
   {
@@ -242,7 +244,7 @@ const operators: CardDef[] = [
   {
     id: 'amp', name: 'アンプ', en: 'AMP', type: 'operator', cost: 3, rarity: 'epic', role: 'support',
     atk: 1, hp: 4, aim: 3, abilities: [{ k: 'suppress', n: 1 }, { k: 'bond', with: 'volt', aim: 2 }],
-    text: '【制圧1】【絆：ボルト】同じゾーンにいるときAIM+2。', flavor: '電流が来て、初めて意味がある。',
+    text: '【絆：ボルト】同じゾーンにいるときAIM+2。このゾーンの敵のAIM-1。', flavor: '電流が来て、初めて意味がある。',
   },
 
   // ── Weak mascots (2) ──
@@ -255,6 +257,38 @@ const operators: CardDef[] = [
     id: 'dot', name: 'ドット', en: 'DOT', type: 'operator', cost: 1, rarity: 'common', role: 'assault',
     atk: 1, hp: 1, aim: 1,
     text: 'ATK1 / HP1 / AIM1。点のような存在感。', flavor: 'ぴっ。',
+  },
+
+  // ── Tiered specials: skill-heavy (4/7), stat-heavy with no skill (4/7), both (9) ──
+  {
+    id: 'beacon', name: 'ビーコン', en: 'BEACON', type: 'operator', cost: 4, rarity: 'epic', role: 'support',
+    atk: 0, hp: 4, aim: 1, abilities: [{ k: 'capture', n: 1 }],
+    text: 'このゾーンを確保したとき、さらに+1pt。', flavor: '信号が届く限り、ここは俺たちの陣地だ。',
+  },
+  {
+    id: 'brute', name: 'ブルート', en: 'BRUTE', type: 'operator', cost: 4, rarity: 'rare', role: 'assault',
+    atk: 4, hp: 6, aim: 6,
+    text: '', flavor: '作戦？ 撃てば終わる。',
+  },
+  {
+    id: 'salvo', name: 'サルヴォ', en: 'SALVO', type: 'operator', cost: 7, rarity: 'epic', role: 'support',
+    atk: 2, hp: 4, aim: 3, abilities: [{ k: 'onDeploy', effect: { kind: 'damageEnemiesEverywhere', amount: 2 } }],
+    text: '配置時：全ゾーンの敵全員に2ダメージ。', flavor: '全ゾーン、着弾まで3秒。',
+  },
+  {
+    id: 'goliath', name: 'ゴライアス', en: 'GOLIATH', type: 'operator', cost: 7, rarity: 'epic', role: 'assault',
+    atk: 7, hp: 11, aim: 5,
+    text: '', flavor: 'でかい。硬い。強い。それだけだ。',
+  },
+  {
+    id: 'juggernaut', name: 'ジャガーノート', en: 'JUGGERNAUT', type: 'operator', cost: 9, rarity: 'legend', role: 'tank',
+    atk: 6, hp: 14, aim: 4, abilities: [{ k: 'guard' }, { k: 'armored' }, { k: 'berserk', n: 1 }],
+    text: '【ガード】【防弾】【狂化】', flavor: '撃て。撃たれるほど、止まらなくなる。',
+  },
+  {
+    id: 'havoc', name: 'ハヴォック', en: 'HAVOC', type: 'operator', cost: 9, rarity: 'legend', role: 'assault',
+    atk: 5, hp: 10, aim: 9, abilities: [{ k: 'drain' }, { k: 'sweep' }],
+    text: '【吸血】同じゾーンの敵全員を一度に撃つ。', flavor: '一人ずつ？ 面倒だ。まとめて来い。',
   },
 ];
 
@@ -277,7 +311,7 @@ const gear: CardDef[] = [
   },
   {
     id: 'shotgun', name: 'SG BR-12', en: 'BR-12', type: 'gear', cost: 2, rarity: 'common', slot: 'weapon', weaponClass: 'sg',
-    mods: { atk: 3, aim: -1 }, abilities: [{ k: 'spread', n: 1 }], text: 'ATK+3 AIM-1【散弾1】', flavor: '角待ちの友。',
+    mods: { atk: 3, aim: -1 }, abilities: [{ k: 'spread', n: 1 }], text: 'ATK+3 AIM-1。撃った敵と同じゾーンの他の敵全員にも1ダメージ。', flavor: '角待ちの友。',
   },
   {
     id: 'heavyarmor', name: 'ヘビーアーマー', en: 'HEAVY', type: 'gear', cost: 2, rarity: 'common', slot: 'armor', weaponClass: 'armor',
@@ -285,31 +319,31 @@ const gear: CardDef[] = [
   },
   {
     id: 'sniper', name: 'SR AWM', en: 'AWM', type: 'gear', cost: 3, rarity: 'rare', slot: 'weapon', weaponClass: 'sr',
-    mods: { atk: 2 }, abilities: [{ k: 'snipe' }], text: 'ATK+2【狙撃】', flavor: '一発で黙らせる。',
+    mods: { atk: 2 }, abilities: [{ k: 'snipe' }], text: 'ATK+2。ATKが最も高い敵をガード無視で狙う。自ゾーンに敵がいなければ隣のゾーンを撃つ（ダメージ-1）。', flavor: '一発で黙らせる。',
   },
   {
     id: 'lmg', name: 'LMG HAMMER', en: 'HAMMER', type: 'gear', cost: 3, rarity: 'rare', slot: 'weapon', weaponClass: 'lmg',
-    mods: { atk: 3 }, abilities: [{ k: 'pierce' }], text: 'ATK+3【貫通】', flavor: '壁ごと抜け。',
+    mods: { atk: 3 }, abilities: [{ k: 'pierce' }], text: 'ATK+3。倒した敵に余ったダメージは次の敵へ。', flavor: '壁ごと抜け。',
   },
   {
     id: 'railgun', name: 'レールガン', en: 'RAILGUN', type: 'gear', cost: 4, rarity: 'epic', slot: 'weapon', weaponClass: 'sr',
     mods: { atk: 4, aim: 2 }, abilities: [{ k: 'ephemeral' }],
-    text: 'ATK+4 AIM+2。【消滅】装備者はターン終了時に破壊される。', flavor: '撃て。あとは灰になれ。',
+    text: 'ATK+4 AIM+2。装備者はターン終了時に破壊される。', flavor: '撃て。あとは灰になれ。',
   },
   {
     id: 'hexscope', name: 'ヘックスコープ', en: 'HEXSCOPE', type: 'gear', cost: 2, rarity: 'epic', slot: 'weapon', weaponClass: 'sr',
     mods: { aim: 5 }, abilities: [{ k: 'bleed', n: 1 }],
-    text: 'AIM+5。【出血1】ターン終了時、装備者に1ダメージ。', flavor: '精度と引き換えに、血を流せ。',
+    text: 'AIM+5。ターン終了時、装備者に1ダメージ。', flavor: '精度と引き換えに、血を流せ。',
   },
   {
     id: 'banerounds', name: '必殺弾', en: 'BANE ROUNDS', type: 'gear', cost: 3, rarity: 'epic', slot: 'weapon', weaponClass: 'ar',
     mods: { atk: 1 }, abilities: [{ k: 'bane' }],
-    text: 'ATK+1。【必殺】ダメージを与えた敵は即死する。', flavor: '一発で十分。',
+    text: 'ATK+1。【必殺】', flavor: '一発で十分。',
   },
   {
     id: 'bombvest', name: '爆弾ベスト', en: 'BOMB VEST', type: 'gear', cost: 2, rarity: 'epic', slot: 'armor', weaponClass: 'armor',
     mods: { hp: 2 }, abilities: [{ k: 'lastWords', effect: { kind: 'damageEnemiesInZone', amount: 4 } }],
-    text: 'HP+2。【遺言】破壊時：このゾーンの敵全員に4ダメージ。', flavor: '死ぬときは派手に。',
+    text: 'HP+2。装備者が破壊されたとき：このゾーンの敵全員に4ダメージ。', flavor: '死ぬときは派手に。',
   },
 ];
 
@@ -399,7 +433,7 @@ export const ZONE_MODS: Record<string, ZoneModDef> = {
   open: { id: 'open', name: 'オープンエリア', text: '効果なし' },
   highground: { id: 'highground', name: '高台', text: '支配すると2pt' },
   choke: { id: 'choke', name: 'チョークポイント', text: '配置上限：各2体' },
-  longrange: { id: 'longrange', name: 'ロングレンジ', text: '【狙撃】持ちATK+2' },
+  longrange: { id: 'longrange', name: 'ロングレンジ', text: 'スナイパーとAWM装備者のATK+2' },
   cqb: { id: 'cqb', name: '屋内戦', text: '全員ATK+1' },
   supply: { id: 'supply', name: '補給ポイント', text: '支配すると次ターン+2¢' },
   toxic: { id: 'toxic', name: '汚染区域', text: 'ターン終了時、全員に1ダメージ' },

@@ -10,6 +10,7 @@ export type WeaponClass = 'smg' | 'ar' | 'sg' | 'sr' | 'lmg' | 'knife' | 'armor'
 
 export type Effect =
   | { kind: 'damageEnemiesInZone'; amount: number }
+  | { kind: 'damageEnemiesEverywhere'; amount: number }
   | { kind: 'damageAllInZone'; amount: number }
   | { kind: 'damageUnit'; amount: number }
   | { kind: 'flashZone' }
@@ -51,6 +52,10 @@ export type Ability =
   | { k: 'mimic' }
   | { k: 'berserk'; n: number }
   | { k: 'bleed'; n: number }
+  /** Shoots every enemy in its own zone at once instead of picking one target. */
+  | { k: 'sweep' }
+  /** Extra points when its zone is captured. */
+  | { k: 'capture'; n: number }
   /** Same-zone partner buff. `with` is a card id. */
   | { k: 'bond'; with: string; atk?: number; aim?: number };
 
@@ -113,7 +118,7 @@ export interface Unit {
   tmpAtk: number;
   flashed: boolean;
   chainShots: number;
-  /** 【不死鳥】で一度耐えたか */
+  /** フェニックスの能力で一度耐えたか */
   phoenixUsed?: boolean;
 }
 

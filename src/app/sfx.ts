@@ -17,6 +17,8 @@ let bgmMode: BgmMode = 'off';
 const bgmEls: Partial<Record<BgmTrack, HTMLAudioElement>> = {};
 let activeTrack: BgmTrack | null = null;
 let unlockBound = false;
+/** Multiplier applied on top of BGM_VOLUME (e.g. duck during pack open). */
+let bgmGain = 1;
 
 const BGM_SRC: Record<BgmTrack, string> = {
   menu: 'audio/menu.mp3',
@@ -661,7 +663,7 @@ function playBgm(mode: BgmTrack) {
   }
 
   next.muted = false;
-  next.volume = BGM_VOLUME[mode];
+  next.volume = BGM_VOLUME[mode] * bgmGain;
   activeTrack = mode;
   void next.play().catch(() => {
     // Autoplay blocked until unlockAudio / bindAudioUnlock runs on a gesture.
@@ -682,6 +684,14 @@ export function setBgm(mode: BgmMode) {
     return;
   }
   playBgm(mode);
+}
+
+/** Multiply current BGM volume (1 = normal). Used to duck under pack-open SFX. */
+export function setBgmGain(scale: number) {
+  bgmGain = Math.max(0, Math.min(1, scale));
+  if (activeTrack && bgmEls[activeTrack] && bgmMode !== 'off') {
+    bgmEls[activeTrack]!.volume = BGM_VOLUME[activeTrack] * bgmGain;
+  }
 }
 
 export function vibrate(pattern: number | number[]) {

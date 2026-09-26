@@ -428,7 +428,7 @@ describe('extreme abilities', () => {
     spawn(g, 0, 'rookie', 1);
     spawn(g, 0, 'rookie', 1);
     expect(effAtk(g, lone)).toBe(5); // 2+3
-    expect(effAtk(g, pack)).toBe(3); // 1+2 allies
+    expect(effAtk(g, pack)).toBe(4); // 2+2 allies
   });
 
   it('bond buffs ATK/AIM only when the partner is in the same zone', () => {
@@ -441,7 +441,7 @@ describe('extreme abilities', () => {
     // Different zone → no bond
     const fang = spawn(g, 0, 'fang', 1);
     spawn(g, 0, 'claw', 2);
-    expect(effAtk(g, fang)).toBe(2);
+    expect(effAtk(g, fang)).toBe(3);
   });
 
   it('mimic copies the highest-ATK enemy on deploy', () => {
@@ -452,10 +452,64 @@ describe('extreme abilities', () => {
     const hid = giveCard(g, 0, 'mimic');
     const { state } = resolveTurn(g, [{ actions: [{ t: 'deploy', hid, zone: 1 }] }, EMPTY]);
     const u = state.zones[1].units[0].find((x) => x.cardId === 'mimic')!;
-    expect(u.atk).toBe(4);
-    expect(u.hp).toBe(5);
-    expect(u.maxHp).toBe(5);
+    expect(u.atk).toBe(5);
+    expect(u.hp).toBe(6);
+    expect(u.maxHp).toBe(6);
     expect(u.aim).toBe(8);
+  });
+
+  it('berserk gains ATK each time it survives damage', () => {
+    const g = setup();
+    const mochi = spawn(g, 0, 'mochi', 0);
+    spawn(g, 1, 'rookie', 0, { aim: 5 });
+    spawn(g, 1, 'rookie', 0, { aim: 6 });
+    const { state } = resolveTurn(g, [EMPTY, EMPTY]);
+    const u = findUnit(state, mochi.uid)!;
+    expect(u.hp).toBe(3);
+    expect(u.atk).toBe(2);
+  });
+
+  it('sweep shoots every enemy in its zone and drain heals from each hit', () => {
+    const g = setup();
+    const havoc = spawn(g, 0, 'havoc', 1, { hp: 5 });
+    spawn(g, 1, 'rookie', 1);
+    spawn(g, 1, 'bulwark', 1);
+    spawn(g, 1, 'scout', 1);
+    const { state, events } = resolveTurn(g, [EMPTY, EMPTY]);
+    expect(ofType(events, 'shot').filter((s) => s.from === havoc.uid)).toHaveLength(3);
+    expect(state.zones[1].units[1]).toHaveLength(0);
+    expect(findUnit(state, havoc.uid)!.hp).toBe(10);
+  });
+
+  it('capture adds a point when its zone is held', () => {
+    const g = setup();
+    spawn(g, 0, 'beacon', 0);
+    spawn(g, 1, 'bulwark', 2);
+    const { state } = resolveTurn(g, [EMPTY, EMPTY]);
+    expect(state.players[0].score).toBe(2);
+    expect(state.players[1].score).toBe(1);
+  });
+
+  it('salvo damages enemies in every zone on deploy', () => {
+    const g = setup();
+    g.players[0].credits = 10;
+    g.zones.forEach((z) => (z.smoked = true));
+    const a = spawn(g, 1, 'titan', 0);
+    const b = spawn(g, 1, 'rookie', 2);
+    const mine = spawn(g, 0, 'rookie', 2);
+    const hid = giveCard(g, 0, 'salvo');
+    const { state } = resolveTurn(g, [{ actions: [{ t: 'deploy', hid, zone: 1 }] }, EMPTY]);
+    expect(findUnit(state, a.uid)!.hp).toBe(a.hp - 1); // armored
+    expect(findUnit(state, b.uid)).toBeUndefined();
+    expect(findUnit(state, mine.uid)!.hp).toBe(mine.hp);
+  });
+
+  it('bit banks credits for next turn', () => {
+    const g = setup();
+    g.players[0].credits = 1;
+    const hid = giveCard(g, 0, 'bit');
+    const { state } = resolveTurn(g, [{ actions: [{ t: 'deploy', hid, zone: 0 }] }, EMPTY]);
+    expect(state.players[0].credits).toBe(Math.min(state.config.creditCap, baseIncome(state.turn) + 2));
   });
 });
 

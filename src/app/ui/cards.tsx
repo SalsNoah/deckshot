@@ -13,6 +13,7 @@ const CARD_ART_IDS = [
   'pup', 'bit', 'lace', 'mochi', 'chirp', 'nibble', 'silk', 'bean',
   'ember', 'frost', 'lock', 'key', 'nova', 'orbit', 'fang', 'claw', 'volt', 'amp',
   'chum', 'dot',
+  'beacon', 'brute', 'salvo', 'goliath', 'juggernaut', 'havoc',
   // gear
   'smg', 'knife', 'vest', 'ar', 'shotgun', 'heavyarmor', 'sniper', 'lmg',
   'railgun', 'hexscope', 'banerounds', 'bombvest',
@@ -27,6 +28,7 @@ const OPERATOR_ANIM_IDS = [
   'pup', 'bit', 'lace', 'mochi', 'chirp', 'nibble', 'silk', 'bean',
   'ember', 'frost', 'lock', 'key', 'nova', 'orbit', 'fang', 'claw', 'volt', 'amp',
   'chum', 'dot',
+  'beacon', 'brute', 'salvo', 'goliath', 'juggernaut', 'havoc',
 ] as const;
 
 const OPERATOR_ANIM_SET = new Set<string>(OPERATOR_ANIM_IDS);
@@ -215,7 +217,7 @@ export function CardDetail({ cardId, unit, compact, kira, sign, flow }: {
 }) {
   const def = card(cardId);
   const color = cardColor(cardId);
-  const kws = cardKeywords(cardId).filter((k) => !def.text?.includes(`【${k.name}】`));
+  const kws = cardKeywords(cardId);
   const extra = [unit?.weapon, unit?.armor].filter(Boolean) as string[];
   const isOp = def.type === 'operator';
   const art = hasCardArt(cardId);

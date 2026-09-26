@@ -194,6 +194,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
   const [timeLeft, setTimeLeft] = useState<number | null>(conn.planSeconds);
   const [result, setResult] = useState<(MatchResult & { rp: number | null }) | null>(null);
   const [oppLeft, setOppLeft] = useState(false);
+  const [intro, setIntro] = useState(true);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -861,6 +862,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
         setTimeLeft(conn.planSeconds);
         statsRef.current.nuked = false;
         setBgm('battle');
+        setIntro(true);
       },
     });
     return () => {
@@ -874,6 +876,16 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
     return () => window.clearTimeout(t);
   }, [conn]);
 
+  useEffect(() => {
+    if (!intro) return;
+    sfx.ready();
+    vibrate(18);
+    const t = window.setTimeout(() => {
+      if (aliveRef.current) setIntro(false);
+    }, 2100);
+    return () => window.clearTimeout(t);
+  }, [intro]);
+
   const spottedByUav = phase === 'plan' && view.opp.uavActive;
   useEffect(() => {
     if (spottedByUav) showToast('敵のUAV：こちらの手札が見られている');
@@ -881,14 +893,14 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
 
   // Plan timer (online only)
   useEffect(() => {
-    if (phase !== 'plan' || timeLeft === null) return;
+    if (intro || phase !== 'plan' || timeLeft === null) return;
     if (timeLeft <= 0) {
       submit();
       return;
     }
     const t = setTimeout(() => setTimeLeft((s) => (s === null ? null : s - 1)), 1000);
     return () => clearTimeout(t);
-  }, [phase, timeLeft]);
+  }, [intro, phase, timeLeft]);
 
   // ---------- planning ----------
   const selectedCard = sel?.kind === 'hand' ? view.self.hand.find((h) => h.hid === sel.hid) : undefined;
@@ -1154,10 +1166,28 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
 
   return (
     <div
-      className={`battle phase-${phase} has-art-bg ${combat ? 'in-combat' : ''} ${sel ? 'selecting' : ''} ${timeCrit ? 'time-crit' : ''}`}
+      className={`battle phase-${phase} has-art-bg ${combat ? 'in-combat' : ''} ${sel ? 'selecting' : ''} ${timeCrit ? 'time-crit' : ''} ${intro ? 'intro-lock' : ''}`}
       style={{ '--screen-bg': cssUrl('bgs/bg-battle.webp') } as CSSProperties}
       ref={rootRef}
     >
+      {intro && (
+        <div className="match-intro" aria-live="polite">
+          <div className="match-intro-flash" aria-hidden />
+          <div className="match-intro-band me">
+            <small>YOU</small>
+            <b>{view.self.name}</b>
+            <span style={{ color: deckById(view.self.deckId).color }}>{deckById(view.self.deckId).en}</span>
+          </div>
+          <div className="match-intro-vs" aria-hidden>VS</div>
+          <div className="match-intro-band opp">
+            <small>OPPONENT</small>
+            <b>{conn.oppName}</b>
+            <span style={{ color: deckById(view.opp.deckId).color }}>{deckById(view.opp.deckId).en}</span>
+          </div>
+          <div className="match-intro-tag">ENGAGE</div>
+        </div>
+      )}
+
       {/* Scoreboard: both scores side by side around the turn, like an FPS round HUD. */}
       <div className="sb">
         <div className="sb-row">
