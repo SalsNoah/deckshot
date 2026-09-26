@@ -1,30 +1,35 @@
 /**
- * Procedural neon / cyberpunk SE + dark EDM BGM (Web Audio, no assets).
- * Cool mode synths — not realistic gun sim.
+ * Procedural neon / cyberpunk SE (Web Audio) + looped MP3 BGM.
  */
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let seBus: GainNode | null = null;
-let bgmBus: GainNode | null = null;
 let noiseBuf: AudioBuffer | null = null;
 let enabled = true;
 
 export type BgmMode = 'off' | 'menu' | 'battle';
 
 let bgmMode: BgmMode = 'off';
-let bgmTimer: number | null = null;
-let bgmNext = 0;
-let bgmStep = 0;
+let menuBgm: HTMLAudioElement | null = null;
+let battleBgm: HTMLAudioElement | null = null;
+let activeBgm: HTMLAudioElement | null = null;
+
+const BGM_SRC = {
+  menu: '/audio/menu.mp3',
+  battle: '/audio/battle.mp3',
+} as const;
+
+const BGM_VOLUME = { menu: 0.45, battle: 0.5 } as const;
 
 export function setSoundEnabled(on: boolean) {
   enabled = on;
   if (!on) {
-    stopBgmLoop();
+    stopBgm();
     if (master) master.gain.value = 0;
-  } else if (master) {
-    master.gain.value = 1;
-    if (bgmMode !== 'off') startBgmLoop();
+  } else {
+    if (master) master.gain.value = 1;
+    if (bgmMode !== 'off') playBgm(bgmMode);
   }
 }
 
@@ -38,8 +43,6 @@ function ac(): AudioContext | null {
     master.gain.value = 1;
     seBus = ctx.createGain();
     seBus.gain.value = 0.52;
-    bgmBus = ctx.createGain();
-    bgmBus.gain.value = 0.22;
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -18;
     comp.knee.value = 12;
@@ -47,7 +50,6 @@ function ac(): AudioContext | null {
     comp.attack.value = 0.003;
     comp.release.value = 0.18;
     seBus.connect(comp);
-    bgmBus.connect(comp);
     comp.connect(master);
     master.connect(ctx.destination);
 
@@ -61,8 +63,32 @@ function ac(): AudioContext | null {
 
 /** Call from a user gesture to unlock audio on mobile. */
 export function unlockAudio() {
-  const c = ac();
-  if (c && bgmMode !== 'off' && enabled) startBgmLoop();
+  ac();
+  ensureBgmElements();
+  if (bgmMode !== 'off' && enabled) {
+    playBgm(bgmMode);
+    return;
+  }
+  // Prime autoplay unlock without leaving a track audible.
+  const probe = menuBgm ?? battleBgm;
+  if (!probe) return;
+  const wasMuted = probe.muted;
+  probe.muted = true;
+  void probe.play().then(() => {
+    if (activeBgm === probe) {
+      probe.muted = wasMuted;
+      return;
+    }
+    probe.pause();
+    try {
+      probe.currentTime = 0;
+    } catch {
+      // ignore
+    }
+    probe.muted = wasMuted;
+  }).catch(() => {
+    probe.muted = wasMuted;
+  });
 }
 
 function env(g: GainNode, t: number, peak: number, attack: number, decay: number) {
@@ -579,289 +605,67 @@ export const sfx = {
   },
 };
 
-/* ───────── BGM (cool mode / dark EDM) ───────── */
+/* ───────── BGM (looped MP3) ───────── */
 
-/** Menu ~112 BPM, Battle ~132 BPM (quarter-note step). */
-const BGM_BEAT = { menu: 0.536, battle: 0.455 } as const;
-
-function stopBgmLoop() {
-  if (bgmTimer !== null) {
-    window.clearInterval(bgmTimer);
-    bgmTimer = null;
-  }
+function makeBgm(src: string, volume: number): HTMLAudioElement {
+  const el = new Audio(src);
+  el.loop = true;
+  el.preload = 'auto';
+  el.volume = volume;
+  return el;
 }
 
-function bgmTone(
-  c: AudioContext,
-  t: number,
-  type: OscillatorType,
-  freq: number,
-  dur: number,
-  peak: number,
-  dest: GainNode,
-  filterFreq?: number,
-  filterEnd?: number,
-  q = 2,
-) {
-  const o = c.createOscillator();
-  const g = c.createGain();
-  o.type = type;
-  o.frequency.setValueAtTime(freq, t);
-  env(g, t, peak, 0.008, dur);
-  if (filterFreq) {
-    const f = c.createBiquadFilter();
-    f.type = 'lowpass';
-    f.Q.value = q;
-    f.frequency.setValueAtTime(filterFreq, t);
-    if (filterEnd) f.frequency.exponentialRampToValueAtTime(Math.max(80, filterEnd), t + dur);
-    o.connect(f).connect(g).connect(dest);
-  } else {
-    o.connect(g).connect(dest);
-  }
-  o.start(t);
-  o.stop(t + dur + 0.05);
+function ensureBgmElements() {
+  if (!menuBgm) menuBgm = makeBgm(BGM_SRC.menu, BGM_VOLUME.menu);
+  if (!battleBgm) battleBgm = makeBgm(BGM_SRC.battle, BGM_VOLUME.battle);
 }
 
-/** Detuned saw layer — supersaw-ish stab / pad. */
-function bgmSawStack(
-  c: AudioContext,
-  t: number,
-  freq: number,
-  dur: number,
-  peak: number,
-  dest: GainNode,
-  cutoff: number,
-  cutoffEnd?: number,
-) {
-  const f = c.createBiquadFilter();
-  const g = c.createGain();
-  f.type = 'lowpass';
-  f.Q.value = 5;
-  f.frequency.setValueAtTime(cutoff, t);
-  if (cutoffEnd) f.frequency.exponentialRampToValueAtTime(Math.max(120, cutoffEnd), t + dur);
-  env(g, t, peak, 0.012, dur);
-  f.connect(g).connect(dest);
-  const detunes = [0, -7, 9];
-  for (const cents of detunes) {
-    const o = c.createOscillator();
-    o.type = 'sawtooth';
-    o.frequency.setValueAtTime(freq * Math.pow(2, cents / 1200), t);
-    o.connect(f);
-    o.start(t);
-    o.stop(t + dur + 0.06);
-  }
-}
-
-/** Punchy EDM kick — pitch-swept sine + click. */
-function edmKick(c: AudioContext, t: number, dest: GainNode, peak = 0.22) {
-  tone(c, t, 'sine', 165, 0.22, peak, 42, 0.002, dest);
-  tone(c, t, 'sine', 90, 0.08, peak * 0.45, 55, 0.001, dest);
-  noise(c, t, 0.035, 'lowpass', 520, peak * 0.28, 90, dest);
-}
-
-/** Layered clap / snare. */
-function edmClap(c: AudioContext, t: number, dest: GainNode, peak = 0.11) {
-  noise(c, t, 0.05, 'bandpass', 1600, peak, undefined, dest);
-  noise(c, t + 0.014, 0.055, 'bandpass', 2100, peak * 0.75, undefined, dest);
-  noise(c, t + 0.028, 0.1, 'highpass', 2800, peak * 0.45, undefined, dest);
-  tone(c, t, 'triangle', 220, 0.04, peak * 0.2, 140, 0.002, dest);
-}
-
-function edmHat(c: AudioContext, t: number, dest: GainNode, open: boolean, peak: number) {
-  noise(c, t, open ? 0.11 : 0.028, 'highpass', open ? 7500 : 11000, peak, undefined, dest);
-}
-
-/** Filtered dual-osc bass (wobble / mode bass). */
-function edmBass(
-  c: AudioContext,
-  t: number,
-  freq: number,
-  dur: number,
-  peak: number,
-  dest: GainNode,
-  cut0: number,
-  cut1: number,
-) {
-  const f = c.createBiquadFilter();
-  const g = c.createGain();
-  f.type = 'lowpass';
-  f.Q.value = 6.5;
-  f.frequency.setValueAtTime(cut0, t);
-  f.frequency.exponentialRampToValueAtTime(Math.max(90, cut1), t + dur * 0.85);
-  env(g, t, peak, 0.006, dur);
-  const o1 = c.createOscillator();
-  const o2 = c.createOscillator();
-  o1.type = 'sawtooth';
-  o2.type = 'square';
-  o1.frequency.setValueAtTime(freq, t);
-  o2.frequency.setValueAtTime(freq * 0.5, t);
-  o1.connect(f);
-  o2.connect(f);
-  f.connect(g).connect(dest);
-  o1.start(t);
-  o2.start(t);
-  o1.stop(t + dur + 0.05);
-  o2.stop(t + dur + 0.05);
-}
-
-/** Cool neon lounge / dark chill EDM (~112 BPM). */
-function scheduleMenu(c: AudioContext, t0: number, step: number) {
-  const dest = bgmBus!;
-  const beat = BGM_BEAT.menu;
-  const t = t0;
-  const bar = step % 16;
-  const beatInBar = bar % 4;
-
-  // four-on-floor (softer)
-  edmKick(c, t, dest, 0.14);
-  // sidechain-ish duck via short silence — pad has short attack after kick
-
-  // clap on 2 & 4
-  if (beatInBar === 1 || beatInBar === 3) edmClap(c, t, dest, 0.07);
-
-  // 16th hats with swing feel
-  const hatPeak = [0.035, 0.018, 0.028, 0.014];
-  for (let i = 0; i < 4; i++) {
-    const open = i === 2 && beatInBar === 3;
-    edmHat(c, t + beat * (i / 4), dest, open, hatPeak[i]! * (open ? 1.2 : 1));
-  }
-
-  // chord progression Am – F – G – Em (roots in Hz)
-  const roots = [110, 110, 87.31, 87.31, 98, 98, 82.41, 82.41];
-  const root = roots[Math.floor(bar / 2) % roots.length]!;
-  // pulsing pad
-  bgmSawStack(c, t + 0.02, root, beat * 0.95, 0.045, dest, 420 + (bar % 8) * 40, 280);
-  bgmTone(c, t + 0.02, 'sine', root * 2, beat * 0.9, 0.04, dest);
-
-  // sparse minor arp (A C E G)
-  if (bar % 2 === 0) {
-    const arp = [root * 4, root * 4 * (6 / 5), root * 4 * 1.5, root * 4 * (9 / 5)];
-    arp.forEach((f, i) => {
-      if ((bar + i) % 3 !== 0) return;
-      bgmTone(c, t + beat * (i * 0.22), 'triangle', f, 0.16, 0.032, dest, 3200, 1800, 1.5);
-    });
-  }
-
-  // airy riser every 8 bars
-  if (bar === 0) {
-    noise(c, t, beat * 3.5, 'highpass', 600, 0.025, 9000, dest);
-    chirp(c, t + beat * 2, 880, 1760, beat * 1.5, 0.028, dest);
-  }
-  // neon ping accents
-  if (bar === 7 || bar === 15) {
-    chirp(c, t + beat * 0.5, 1320, 2640, 0.28, 0.025, dest);
-  }
-}
-
-/** Aggressive cyber mode / festival EDM (~132 BPM). */
-function scheduleBattle(c: AudioContext, t0: number, step: number) {
-  const dest = bgmBus!;
-  const beat = BGM_BEAT.battle;
-  const t = t0;
-  const bar = step % 32;
-  const beatInBar = bar % 4;
-  const phrase = Math.floor(bar / 8) % 4;
-
-  // driving four-on-floor
-  edmKick(c, t, dest, 0.24);
-
-  // clap / snare on 2 & 4
-  if (beatInBar === 1 || beatInBar === 3) edmClap(c, t, dest, 0.13);
-
-  // rapid closed hats + open hat on offbeats
-  for (let i = 0; i < 4; i++) {
-    const open = i === 2;
-    edmHat(c, t + beat * (i / 4), dest, open, open ? 0.055 : 0.04 + (i % 2) * 0.012);
-  }
-  // extra 32nd ghost hats in high-energy phrases
-  if (phrase >= 2) {
-    edmHat(c, t + beat * 0.125, dest, false, 0.022);
-    edmHat(c, t + beat * 0.625, dest, false, 0.02);
-  }
-
-  // bass: A minor mode line with filter wobble
-  const bassPat = [
-    55, 55, 55, 65.41, 55, 73.42, 82.41, 65.41, // Am / F feel
-    55, 55, 49, 49, 55, 82.41, 73.42, 65.41,
-  ];
-  const b = bassPat[bar % bassPat.length]!;
-  const wob = bar % 2 === 0 ? [900, 220] : [280, 1100];
-  edmBass(c, t, b, beat * 0.88, 0.13, dest, wob[0]!, wob[1]!);
-  // sub sine under bass
-  tone(c, t, 'sine', b * 0.5, beat * 0.75, 0.1, undefined, 0.004, dest);
-
-  // syncopated supersaw stabs (offbeat)
-  if (beatInBar === 1 || beatInBar === 2 || bar % 8 === 5) {
-    const stabRoot = b * 2;
-    const chord = [1, 1.2, 1.5].map((r) => stabRoot * r);
-    chord.forEach((f, i) => {
-      bgmSawStack(c, t + 0.04 + i * 0.008, f, 0.14, 0.035, dest, 1400, 600);
-    });
-  }
-
-  // lead hook — rising minor arp every half phrase
-  if (bar % 8 === 0) {
-    const lead = [440, 523.25, 659.25, 880, 659.25, 523.25];
-    lead.forEach((f, i) => {
-      bgmTone(c, t + i * beat * 0.35, 'sawtooth', f, 0.2, 0.045, dest, 2800, 900, 3);
-    });
-  }
-  if (bar % 8 === 4) {
-    [587.33, 698.46, 880].forEach((f, i) => {
-      bgmTone(c, t + i * 0.1, 'square', f, 0.12, 0.035, dest, 2200, 1200, 2);
-    });
-  }
-
-  // build / drop noise sweeps
-  if (bar === 24) {
-    noise(c, t, beat * 7.5, 'bandpass', 400, 0.04, 8000, dest);
-    chirp(c, t, 220, 1760, beat * 7, 0.04, dest);
-  }
-  if (bar === 0) {
-    chirp(c, t, 660, 1320, 0.4, 0.04, dest);
-    bgmSawStack(c, t, 900, 0.35, 0.05, dest, 2400, 400);
-  }
-}
-
-function startBgmLoop() {
-  stopBgmLoop();
-  const c = ac();
-  if (!c || !enabled || bgmMode === 'off') return;
-  bgmNext = c.currentTime + 0.05;
-  bgmStep = 0;
-  const beat = bgmMode === 'battle' ? BGM_BEAT.battle : BGM_BEAT.menu;
-
-  const tick = () => {
-    if (!enabled || bgmMode === 'off' || !ctx || !bgmBus) return;
-    const now = ctx.currentTime;
-    while (bgmNext < now + 0.4) {
-      if (bgmMode === 'menu') scheduleMenu(ctx, bgmNext, bgmStep);
-      else if (bgmMode === 'battle') scheduleBattle(ctx, bgmNext, bgmStep);
-      bgmStep++;
-      bgmNext += beat;
+function stopBgm() {
+  for (const el of [menuBgm, battleBgm]) {
+    if (!el) continue;
+    el.pause();
+    try {
+      el.currentTime = 0;
+    } catch {
+      // ignore seek errors before metadata
     }
-  };
-  tick();
-  bgmTimer = window.setInterval(tick, 60);
+  }
+  activeBgm = null;
+}
+
+function playBgm(mode: 'menu' | 'battle') {
+  ensureBgmElements();
+  const next = mode === 'battle' ? battleBgm! : menuBgm!;
+  if (activeBgm === next && !next.paused) return;
+
+  for (const el of [menuBgm, battleBgm]) {
+    if (!el || el === next) continue;
+    el.pause();
+    try {
+      el.currentTime = 0;
+    } catch {
+      // ignore
+    }
+  }
+
+  next.volume = BGM_VOLUME[mode];
+  activeBgm = next;
+  void next.play().catch(() => {
+    // Autoplay may be blocked until unlockAudio() runs from a gesture.
+  });
 }
 
 export function setBgm(mode: BgmMode) {
   if (bgmMode === mode) {
-    if (mode !== 'off' && enabled && !bgmTimer) startBgmLoop();
+    if (mode !== 'off' && enabled && (!activeBgm || activeBgm.paused)) playBgm(mode);
     return;
   }
   bgmMode = mode;
-  stopBgmLoop();
-  if (mode === 'off' || !enabled) return;
-  // duck briefly on switch
-  if (bgmBus && ctx) {
-    const t = ctx.currentTime;
-    bgmBus.gain.cancelScheduledValues(t);
-    bgmBus.gain.setValueAtTime(bgmBus.gain.value, t);
-    bgmBus.gain.linearRampToValueAtTime(0.01, t + 0.08);
-    bgmBus.gain.linearRampToValueAtTime(mode === 'battle' ? 0.22 : 0.2, t + 0.35);
+  if (mode === 'off' || !enabled) {
+    stopBgm();
+    return;
   }
-  startBgmLoop();
+  playBgm(mode);
 }
 
 export function vibrate(pattern: number | number[]) {
