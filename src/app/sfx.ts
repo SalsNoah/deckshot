@@ -462,9 +462,9 @@ export const sfx = {
     const c = ac();
     if (!c) return;
     const t = c.currentTime;
-    neonSweep(c, t, 90, 420, 0.9, 0.16);
-    noise(c, t, 0.9, 'bandpass', 300, 0.16, 2400);
-    [0.2, 0.42, 0.6, 0.74].forEach((d) => click(c, t + d, 0.07));
+    neonSweep(c, t, 90, 420, 1.35, 0.14);
+    noise(c, t, 1.35, 'bandpass', 300, 0.14, 2400);
+    [0.22, 0.48, 0.72, 0.94, 1.12].forEach((d) => click(c, t + d, 0.07));
   },
 
   /** Opening blast; `tier` 0–3 (common → legend) layers on a bigger chord. */

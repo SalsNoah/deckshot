@@ -804,10 +804,10 @@ input { font: inherit; }
 }
 .phase-open:not(.waving) .pack-card.hl:not(.flipped):not(.charging) .pack-card-tap { animation: tapHint 1.4s ease-in-out 0.9s infinite; }
 
-.pack-card.charging { z-index: 4; --charge: 0.36s; }
-.pack-card.charging.r-legend { --charge: 0.78s; }
+.pack-card.charging { z-index: 4; --charge: 0.56s; }
+.pack-card.charging.r-legend { --charge: 1.18s; }
 .pack-card.hl.charging:not(.flipped) .pack-card-float { animation: cardQuake 0.18s linear infinite; }
-.pack-card.hl.charging.r-legend:not(.flipped) .pack-card-float { animation-duration: 0.12s; }
+.pack-card.hl.charging.r-legend:not(.flipped) .pack-card-float { animation-duration: 0.11s; }
 .pack-card.hl.charging:not(.flipped) .pack-card-float::after { animation: none; opacity: 1; box-shadow: 0 0 34px 10px var(--r); }
 .pack-card.hl.charging:not(.flipped) .pack-card-back::before {
   content: ''; position: absolute; inset: 0; width: auto; aspect-ratio: auto; translate: none; pointer-events: none;

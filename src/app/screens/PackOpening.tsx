@@ -16,21 +16,23 @@ const BY_RANK: Rarity[] = ['legend', 'epic', 'rare', 'common'];
 const HINT_COLOR: Record<Hint, string> = { low: '#19f0ff', epic: RARITY_COLOR.epic, legend: RARITY_COLOR.legend };
 const COLS = 6;
 
-const TEAR_MS: Record<Hint, number> = { low: 340, epic: 760, legend: 1000 };
-const TEAR_MULTI_LOW = 440;
+/** Tear hold: long enough to feel the omen, short enough that the burst still snaps. */
+const TEAR_MS: Record<Hint, number> = { low: 480, epic: 1100, legend: 1520 };
+const TEAR_MULTI_LOW = 620;
 /** Some legend packs glow epic-purple first and upgrade here; epic packs never glow gold. */
-const PROMO_AT = 520;
+const PROMO_AT = 720;
 const PROMO_SHARE = 0.45;
-const BURST_MS = 240;
+const BURST_MS = 260;
 const DEAL_STEP = 70;
 const DEAL_STEP_MULTI = 14;
 const DEAL_FLIGHT = 340;
 const WAVE_STEP = 90;
 const WAVE_ROW = 70;
 const FLIP_MS = 460;
-const CHARGE_MS = { epic: 360, legend: 780 };
-const AUTO_CHARGE_MS = { epic: 0, legend: 480 };
-const AUTO_GAP = 260;
+/** Epic/legend flips: linger on the charge, then crack open cleanly. */
+const CHARGE_MS = { epic: 560, legend: 1180 };
+const AUTO_CHARGE_MS = { epic: 0, legend: 720 };
+const AUTO_GAP = 320;
 const POP_MS = 700;
 const SPOT_MS = { legend: 2600, sign: 2000 };
 const TAP_GUARD = 380;
@@ -197,13 +199,17 @@ export function PackOpening({ cards, kira, sign, fresh, quick, onClose, onAgain,
     if (r === 'legend') {
       sfx.legendCharge();
       vibrate([15, 30, 15]);
-      later(Math.round(charge * 0.55), () => {
+      // Heartbeats tighten into the crack so the hold feels tense, not idle.
+      later(Math.round(charge * 0.28), () => sfx.heartbeat());
+      later(Math.round(charge * 0.48), () => sfx.heartbeat());
+      later(Math.round(charge * 0.62), () => {
         setCracked(true);
         sfx.crack();
         vibrate(30);
       });
     } else {
       sfx.heartbeat();
+      later(Math.round(charge * 0.45), () => sfx.heartbeat());
       vibrate(15);
     }
     later(charge, () => {
@@ -308,8 +314,18 @@ export function PackOpening({ cards, kira, sign, fresh, quick, onClose, onAgain,
     setSeam(shown);
     sfx.packCharge();
     vibrate(20);
-    if (shown === 'epic') later(200, () => sfx.heartbeat());
-    if (shown === 'legend') sfx.legendCharge();
+    if (shown === 'epic') {
+      later(220, () => sfx.heartbeat());
+      later(520, () => sfx.heartbeat());
+      later(820, () => sfx.heartbeat());
+    }
+    if (shown === 'legend') {
+      sfx.legendCharge();
+      later(280, () => sfx.heartbeat());
+      later(560, () => sfx.heartbeat());
+      later(900, () => sfx.heartbeat());
+      later(1180, () => sfx.heartbeat());
+    }
     if (promo) {
       later(PROMO_AT, () => {
         setSeam('legend');
@@ -318,6 +334,9 @@ export function PackOpening({ cards, kira, sign, fresh, quick, onClose, onAgain,
         sfx.rankUp(3);
         vibrate([30, 40, 70]);
       });
+      // After the upgrade, keep the gold hold breathing until the burst.
+      later(PROMO_AT + 280, () => sfx.heartbeat());
+      later(PROMO_AT + 520, () => sfx.heartbeat());
     }
     later(tearMs, () => {
       go('burst');
