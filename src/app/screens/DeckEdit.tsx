@@ -3,11 +3,11 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import {
   ALL_CARDS, DECK_SIZE, DECKS, MAX_COPIES, card, countCards, validateDeck, type CardType,
 } from '../../engine';
-import type { Profile } from '../profile';
+import { DECK_SLOTS, type Profile } from '../profile';
 import { hasFlow, hasKira, hasSign } from '../profile';
+import { DeckRoster, DeckSlots } from '../ui/DeckRoster';
 import { CardDetail, HandCard } from '../ui/cards';
 import { cssUrl } from '../ui/assets';
-import { TYPE_LABEL } from '../ui/text';
 
 const TABS: { id: CardType | 'all'; name: string }[] = [
   { id: 'all', name: 'すべて' },
@@ -21,11 +21,14 @@ export function DeckEdit({ profile, onChange, onBack }: {
   onChange: (p: Partial<Profile>) => void;
   onBack: () => void;
 }) {
-  const [draft, setDraft] = useState<string[]>(() => [...profile.deck]);
+  const [slot, setSlot] = useState(profile.activeDeck);
+  const [drafts, setDrafts] = useState(() =>
+    Array.from({ length: DECK_SLOTS }, (_, i) => [...(profile.decks[i] ?? [])]));
   const [tab, setTab] = useState<CardType | 'all'>('all');
   const [peek, setPeek] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
+  const draft = drafts[slot]!;
   const deckCounts = useMemo(() => countCards(draft), [draft]);
   const validation = useMemo(() => validateDeck(draft, profile.owned), [draft, profile.owned]);
 
@@ -39,6 +42,14 @@ export function DeckEdit({ profile, onChange, onBack }: {
   const flash = (msg: string) => {
     setToast(msg);
     window.setTimeout(() => setToast(null), 1600);
+  };
+
+  const setDraft = (next: string[] | ((cur: string[]) => string[])) => {
+    setDrafts((all) => {
+      const cur = all[slot]!;
+      const cards = typeof next === 'function' ? next(cur) : next;
+      return all.map((d, i) => (i === slot ? cards : d));
+    });
   };
 
   const add = (id: string) => {
@@ -80,12 +91,15 @@ export function DeckEdit({ profile, onChange, onBack }: {
       flash(v.errors[0] ?? 'デッキが不正です');
       return;
     }
-    onChange({ deck: [...draft], deckId: 'custom' });
-    flash('デッキを保存しました');
+    onChange({
+      decks: drafts.map((d) => [...d]),
+      activeDeck: slot,
+      deck: [...draft],
+      deckId: 'custom',
+    });
+    flash(`SET ${slot + 1} を保存しました`);
     window.setTimeout(onBack, 400);
   };
-
-  const uniqueDeck = [...deckCounts.entries()].sort((a, b) => card(a[0]).cost - card(b[0]).cost);
 
   return (
     <div className="screen screen-scroll has-art-bg deck-edit" style={{ '--screen-bg': cssUrl('bgs/bg-menu.webp') } as CSSProperties}>
@@ -94,6 +108,12 @@ export function DeckEdit({ profile, onChange, onBack }: {
         <h2>デッキ編成</h2>
         <span className={`deck-count ${draft.length === DECK_SIZE ? 'ok' : ''}`}>{draft.length}/{DECK_SIZE}</span>
       </div>
+
+      <DeckSlots
+        active={slot}
+        lengths={drafts.map((d) => d.length)}
+        onSelect={setSlot}
+      />
 
       <div className="deck-templates">
         <span>テンプレ:</span>
@@ -104,22 +124,19 @@ export function DeckEdit({ profile, onChange, onBack }: {
         ))}
       </div>
 
-      <section className="deck-edit-current">
-        <h3>編成中</h3>
-        {uniqueDeck.length === 0 ? (
-          <p className="muted">下の所持カードをタップして追加</p>
-        ) : (
-          <div className="deck-cards">
-            {uniqueDeck.map(([id, n]) => (
-              <button key={id} className="deck-line" onClick={() => remove(id)} onContextMenu={(e) => { e.preventDefault(); setPeek(id); }}>
-                <span className="deck-line-cost">{card(id).cost}</span>
-                <span className="deck-line-name">{card(id).name}</span>
-                <span className="deck-line-type">{TYPE_LABEL[card(id).type]}</span>
-                <span className="deck-line-n">×{n}</span>
-              </button>
-            ))}
+      <section className="deck-detail">
+        <div className="deck-detail-head">
+          <div>
+            <div className="deck-en">SET {slot + 1}</div>
+            <div className="deck-name">編成中<span>{draft.length}/{DECK_SIZE}枚・タップで外す</span></div>
           </div>
-        )}
+        </div>
+        <DeckRoster
+          cards={draft}
+          profile={profile}
+          onCard={remove}
+          emptyHint="下の所持カードをタップして追加"
+        />
         {!validation.ok && draft.length === DECK_SIZE && (
           <p className="deck-error">{validation.errors[0]}</p>
         )}
@@ -167,7 +184,7 @@ export function DeckEdit({ profile, onChange, onBack }: {
         onClick={save}
       >
         <span className="hud-ico"><Check size={22} /></span>
-        <span className="hud-txt"><b>SAVE DECK</b><small>このデッキを保存（{draft.length}/{DECK_SIZE}）</small></span>
+        <span className="hud-txt"><b>SAVE DECK</b><small>SET {slot + 1} を保存（{draft.length}/{DECK_SIZE}）</small></span>
         <ChevronRight className="hud-go" size={22} />
       </button>
 

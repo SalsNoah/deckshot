@@ -497,13 +497,46 @@ input { font: inherit; }
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
   font-family: var(--font-jp); font-size: 12px; color: var(--muted);
 }
-.deck-edit-current {
-  background: rgba(6, 7, 10, 0.8); border: 1px solid var(--line); border-radius: 2px; padding: 10px;
-  backdrop-filter: blur(8px);
+.deck-slots {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
 }
-.deck-edit-current h3 { margin: 0 0 8px; font-family: var(--font-jp); font-size: 13px; color: var(--me); }
-.deck-edit-current .muted { margin: 0; font-family: var(--font-jp); font-size: 12px; color: var(--muted); }
-.deck-line-type { font-size: 10px; color: var(--muted); }
+.deck-slots button {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 8px 10px; text-align: left;
+  background: rgba(6, 7, 10, 0.75); border: 1px solid var(--line); border-radius: 2px;
+  color: #c5d0dc;
+}
+.deck-slots button b {
+  font-family: var(--font-num); font-size: 12px; letter-spacing: 0.14em; color: #fff;
+}
+.deck-slots button small {
+  font-family: var(--font-jp); font-size: 11px; color: var(--muted);
+}
+.deck-slots button.on {
+  border-color: var(--me);
+  box-shadow: inset 3px 0 0 var(--me), 0 0 16px -8px var(--me);
+  color: #fff;
+}
+.deck-slots button.on small { color: var(--me); }
+.deck-roster-empty { margin: 4px 0 0; font-family: var(--font-jp); font-size: 12px; color: var(--muted); }
+.deck-roster { display: flex; flex-direction: column; gap: 10px; }
+.deck-roster-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+}
+@media (max-width: 420px) {
+  .deck-roster-grid { grid-template-columns: repeat(3, 1fr); }
+}
+.deck-roster-card {
+  position: relative;
+}
+.deck-roster-card .hcard { width: 100%; height: 96px; }
+.deck-roster-n {
+  position: absolute; right: 3px; bottom: 3px; z-index: 2; pointer-events: none;
+  min-width: 22px; padding: 1px 5px;
+  background: rgba(5, 6, 10, 0.88); border: 1px solid var(--me); border-radius: 2px;
+  font-family: var(--font-num); font-size: 11px; font-weight: 800; color: #fff;
+  box-shadow: 0 0 8px -2px var(--me);
+}
 .pool-card { display: flex; flex-direction: column; gap: 4px; }
 .pool-card .hcard { width: 100%; height: 110px; }
 .pool-meta {
@@ -513,6 +546,31 @@ input { font: inherit; }
 .pool-actions { display: flex; gap: 4px; }
 .pool-actions .btn { flex: 1; padding: 4px; font-size: 12px; }
 .sticky-save { position: sticky; bottom: 8px; z-index: 5; box-shadow: 0 -8px 20px rgba(0,0,0,0.45); }
+
+.audio-wrap { position: relative; }
+.audio-panel {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 20;
+  width: 220px; padding: 10px;
+  background: rgba(6, 7, 10, 0.96); border: 1px solid var(--line); border-radius: 2px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.vol-row { display: flex; flex-direction: column; gap: 4px; }
+.vol-label {
+  font-family: var(--font-num); font-size: 11px; font-weight: 700; letter-spacing: 0.18em; color: var(--muted);
+}
+.vol-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.vol-steps button {
+  height: 28px; padding: 0;
+  font-family: var(--font-num); font-size: 12px; font-weight: 800;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); border-radius: 2px; color: #8a96a8;
+}
+.vol-steps button.lit { border-color: color-mix(in srgb, var(--me) 45%, var(--line)); color: #c5d0dc; }
+.vol-steps button.on {
+  background: color-mix(in srgb, var(--me) 22%, transparent);
+  border-color: var(--me); color: #fff;
+  box-shadow: 0 0 12px -4px var(--me);
+}
 
 .collect-card { position: relative; display: flex; flex-direction: column; gap: 4px; }
 .collect-card .hcard { width: 100%; height: 118px; }

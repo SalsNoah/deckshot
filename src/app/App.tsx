@@ -3,7 +3,7 @@ import { DECKS } from '../engine';
 import { LocalCpuMatch, type MatchConnection } from './match';
 import type { OnlineMatch } from './online';
 import { isDeckReady, loadProfile, matchRpDelta, saveProfile, applyOperatorMatchUses, type Profile } from './profile';
-import { bindAudioUnlock, setBgm, setSoundEnabled, unlockAudio } from './sfx';
+import { bindAudioUnlock, setBgm, setBgmVolume, setSeVolume, unlockAudio } from './sfx';
 import { Battle, type MatchResult } from './screens/Battle';
 import { Cards } from './screens/Cards';
 import { DeckEdit } from './screens/DeckEdit';
@@ -33,7 +33,8 @@ export function App() {
 
   useEffect(() => {
     saveProfile(profile);
-    setSoundEnabled(profile.sound);
+    setBgmVolume(profile.bgmVol);
+    setSeVolume(profile.seVol);
   }, [profile]);
 
   useEffect(() => {
@@ -41,14 +42,14 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!profile.sound) {
+    if (profile.bgmVol === 0) {
       setBgm('off');
       return;
     }
     if (screen.name === 'battle') setBgm('battle');
     else if (screen.name === 'gacha') setBgm('gacha');
     else setBgm('menu');
-  }, [screen.name, profile.sound]);
+  }, [screen.name, profile.bgmVol]);
 
   useEffect(() => {
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;

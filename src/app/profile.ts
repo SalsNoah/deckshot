@@ -1,6 +1,20 @@
 import { DECKS, card, ownedFromList, type Difficulty, validateDeck } from '../engine';
 import { FLOW_UNLOCK_MATCHES } from './gacha';
 
+/** How many independent decks the player can keep. */
+export const DECK_SLOTS = 3;
+/** User volume steps: 0 = mute … 4 = max. */
+export type VolStep = 0 | 1 | 2 | 3 | 4;
+export const VOL_STEPS: VolStep[] = [0, 1, 2, 3, 4];
+export const VOL_DEFAULT: VolStep = 3;
+
+export function clampVol(n: unknown, fallback: VolStep = VOL_DEFAULT): VolStep {
+  const v = typeof n === 'number' ? Math.floor(n) : fallback;
+  if (v <= 0) return 0;
+  if (v >= 4) return 4;
+  return v as VolStep;
+}
+
 export interface Profile {
   name: string;
   rp: number;
@@ -12,8 +26,12 @@ export interface Profile {
   nukes: number;
   /** Cosmetic / CPU opponent preference; player battles use `deck`. */
   deckId: string;
-  /** Fixed-size constructed deck (DECK_SIZE cards). */
+  /** Active slot's cards (mirrors `decks[activeDeck]`). */
   deck: string[];
+  /** All saved deck slots. */
+  decks: string[][];
+  /** Index into `decks` currently selected for battle / edit. */
+  activeDeck: number;
   /** Owned card copies. */
   owned: Record<string, number>;
   /** Owned kira (shiny) operator copies. Cosmetic; still counts via `owned`. */
@@ -29,8 +47,26 @@ export interface Profile {
   /** Local calendar date `YYYY-MM-DD` of last free gacha, or null. */
   lastFreeGacha: string | null;
   difficulty: Difficulty;
-  sound: boolean;
+  /** BGM volume 0–4. */
+  bgmVol: VolStep;
+  /** SE volume 0–4. */
+  seVol: VolStep;
   seenHowTo: boolean;
+}
+
+/** Persist cards into the active slot and keep `deck` in sync. */
+export function withDeckCards(p: Profile, cards: string[], slot = p.activeDeck): Pick<Profile, 'deck' | 'decks' | 'activeDeck' | 'deckId'> {
+  const i = Math.max(0, Math.min(DECK_SLOTS - 1, slot));
+  const decks = Array.from({ length: DECK_SLOTS }, (_, k) =>
+    k === i ? [...cards] : [...(p.decks[k] ?? [])]);
+  return { decks, activeDeck: i, deck: [...cards], deckId: 'custom' };
+}
+
+/** Switch the active slot (battle + edit target). */
+export function selectDeckSlot(p: Profile, slot: number): Pick<Profile, 'deck' | 'decks' | 'activeDeck'> {
+  const i = Math.max(0, Math.min(DECK_SLOTS - 1, slot));
+  const decks = Array.from({ length: DECK_SLOTS }, (_, k) => [...(p.decks[k] ?? [])]);
+  return { decks, activeDeck: i, deck: [...decks[i]!] };
 }
 
 function countMap(raw: unknown): Record<string, number> {
@@ -51,6 +87,10 @@ function starterOwnedAndDeck(): { owned: Record<string, number>; deck: string[] 
 
 const STARTER = starterOwnedAndDeck();
 
+function emptySlots(active: string[]): string[][] {
+  return Array.from({ length: DECK_SLOTS }, (_, i) => (i === 0 ? [...active] : []));
+}
+
 const DEFAULT: Profile = {
   name: '',
   rp: 0,
@@ -62,6 +102,8 @@ const DEFAULT: Profile = {
   nukes: 0,
   deckId: 'custom',
   deck: STARTER.deck,
+  decks: emptySlots(STARTER.deck),
+  activeDeck: 0,
   owned: STARTER.owned,
   kiraOwned: {},
   signOwned: {},
@@ -70,42 +112,94 @@ const DEFAULT: Profile = {
   gachaTickets: 3,
   lastFreeGacha: null,
   difficulty: 'normal',
-  sound: true,
+  bgmVol: VOL_DEFAULT,
+  seVol: VOL_DEFAULT,
   seenHowTo: false,
 };
 
+function migrateDecks(raw: Record<string, unknown>, deck: string[]): { decks: string[][]; activeDeck: number; deck: string[] } {
+  const rawSlots = Array.isArray(raw.decks) ? raw.decks : null;
+  let decks: string[][];
+  if (rawSlots && rawSlots.length > 0) {
+    decks = Array.from({ length: DECK_SLOTS }, (_, i) => {
+      const slot = rawSlots[i];
+      return Array.isArray(slot) ? slot.filter((id): id is string => typeof id === 'string') : [];
+    });
+  } else {
+    decks = emptySlots(deck);
+  }
+  const activeDeck = Math.max(0, Math.min(DECK_SLOTS - 1, typeof raw.activeDeck === 'number' ? Math.floor(raw.activeDeck) : 0));
+  // Prefer the active slot when it has cards; otherwise keep the legacy `deck` field.
+  const active = decks[activeDeck]!.length ? [...decks[activeDeck]!] : [...deck];
+  decks[activeDeck] = [...active];
+  return { decks, activeDeck, deck: active };
+}
+
+function migrateVol(raw: Record<string, unknown>): { bgmVol: VolStep; seVol: VolStep } {
+  if ('bgmVol' in raw || 'seVol' in raw) {
+    return { bgmVol: clampVol(raw.bgmVol), seVol: clampVol(raw.seVol) };
+  }
+  // Legacy boolean `sound`.
+  if (raw.sound === false) return { bgmVol: 0, seVol: 0 };
+  return { bgmVol: VOL_DEFAULT, seVol: VOL_DEFAULT };
+}
+
 function migrate(raw: Partial<Profile> & Record<string, unknown>): Profile {
-  const base: Profile = {
-    ...DEFAULT,
-    ...raw,
-    owned: raw.owned && typeof raw.owned === 'object' ? { ...raw.owned } : { ...DEFAULT.owned },
-    kiraOwned: countMap(raw.kiraOwned),
-    signOwned: countMap(raw.signOwned),
-    flowOwned: countMap(raw.flowOwned),
-    operatorUses: countMap(raw.operatorUses),
-    deck: Array.isArray(raw.deck) ? [...raw.deck] : [...DEFAULT.deck],
-    gachaTickets: typeof raw.gachaTickets === 'number' ? raw.gachaTickets : DEFAULT.gachaTickets,
-    lastFreeGacha: typeof raw.lastFreeGacha === 'string' ? raw.lastFreeGacha : null,
-  };
+  let deck = Array.isArray(raw.deck) ? [...raw.deck] : [...DEFAULT.deck];
+  let owned = raw.owned && typeof raw.owned === 'object' ? { ...raw.owned as Record<string, number> } : { ...DEFAULT.owned };
 
   // Legacy profiles only had deckId presets — grant that preset as owned + active deck.
   if (!raw.owned || !Array.isArray(raw.deck)) {
     const preset = DECKS.find((d) => d.id === (raw.deckId as string)) ?? DECKS[0];
-    base.owned = ownedFromList(preset.cards);
-    base.deck = [...preset.cards];
-    base.deckId = 'custom';
-    if (typeof raw.gachaTickets !== 'number') base.gachaTickets = 3;
+    owned = ownedFromList(preset.cards);
+    deck = [...preset.cards];
   }
 
-  // Sanitize illegal decks against owned.
-  const check = validateDeck(base.deck, base.owned);
+  // Sanitize illegal active deck against owned.
+  const check = validateDeck(deck, owned);
   if (!check.ok) {
     const fallback = [...DECKS[0].cards];
-    for (const id of fallback) base.owned[id] = Math.max(base.owned[id] ?? 0, fallback.filter((c) => c === id).length);
-    base.deck = fallback;
+    for (const id of fallback) owned[id] = Math.max(owned[id] ?? 0, fallback.filter((c) => c === id).length);
+    deck = fallback;
   }
 
-  return base;
+  const slots = migrateDecks(raw, deck);
+  // Drop illegal cards from non-active slots without wiping the whole slot.
+  for (let i = 0; i < DECK_SLOTS; i++) {
+    const cleaned = slots.decks[i]!.filter((id) => (owned[id] ?? 0) > 0);
+    const counts: Record<string, number> = {};
+    slots.decks[i] = cleaned.filter((id) => {
+      counts[id] = (counts[id] ?? 0) + 1;
+      return counts[id]! <= (owned[id] ?? 0);
+    });
+  }
+  slots.deck = [...slots.decks[slots.activeDeck]!];
+
+  const vols = migrateVol(raw);
+
+  return {
+    ...DEFAULT,
+    name: typeof raw.name === 'string' ? raw.name : DEFAULT.name,
+    rp: typeof raw.rp === 'number' ? raw.rp : DEFAULT.rp,
+    wins: typeof raw.wins === 'number' ? raw.wins : DEFAULT.wins,
+    losses: typeof raw.losses === 'number' ? raw.losses : DEFAULT.losses,
+    draws: typeof raw.draws === 'number' ? raw.draws : DEFAULT.draws,
+    kills: typeof raw.kills === 'number' ? raw.kills : DEFAULT.kills,
+    headshots: typeof raw.headshots === 'number' ? raw.headshots : DEFAULT.headshots,
+    nukes: typeof raw.nukes === 'number' ? raw.nukes : DEFAULT.nukes,
+    owned,
+    kiraOwned: countMap(raw.kiraOwned),
+    signOwned: countMap(raw.signOwned),
+    flowOwned: countMap(raw.flowOwned),
+    operatorUses: countMap(raw.operatorUses),
+    deckId: 'custom',
+    ...slots,
+    gachaTickets: typeof raw.gachaTickets === 'number' ? raw.gachaTickets : DEFAULT.gachaTickets,
+    lastFreeGacha: typeof raw.lastFreeGacha === 'string' ? raw.lastFreeGacha : null,
+    difficulty: (raw.difficulty as Difficulty) ?? DEFAULT.difficulty,
+    ...vols,
+    seenHowTo: !!raw.seenHowTo,
+  };
 }
 
 export function loadProfile(): Profile {
@@ -124,6 +218,10 @@ export function loadProfile(): Profile {
     flowOwned: {},
     operatorUses: {},
     deck: [...DEFAULT.deck],
+    decks: emptySlots(DEFAULT.deck),
+    activeDeck: 0,
+    bgmVol: VOL_DEFAULT,
+    seVol: VOL_DEFAULT,
   };
 }
 

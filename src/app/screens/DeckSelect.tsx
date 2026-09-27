@@ -1,11 +1,11 @@
 import { Check, ChevronRight, Crosshair, Pencil } from 'lucide-react';
 import { useState, type CSSProperties } from 'react';
-import { DECK_SIZE, card, countCards, validateDeck, type CardType, type Difficulty } from '../../engine';
-import type { Profile } from '../profile';
+import { DECK_SIZE, card, validateDeck, type Difficulty } from '../../engine';
+import { selectDeckSlot, type Profile } from '../profile';
+import { hasFlow, hasKira, hasSign } from '../profile';
+import { DeckRoster, DeckSlots } from '../ui/DeckRoster';
 import { CardDetail } from '../ui/cards';
 import { cssUrl } from '../ui/assets';
-import { CardIcon } from '../ui/icons';
-import { TYPE_LABEL } from '../ui/text';
 
 const DIFFS: { id: Difficulty; name: string; desc: string }[] = [
   { id: 'easy', name: '新兵', desc: 'まずはルールに慣れよう' },
@@ -13,28 +13,22 @@ const DIFFS: { id: Difficulty; name: string; desc: string }[] = [
   { id: 'hard', name: 'エース', desc: '読み合いを仕掛けてくる' },
 ];
 
-const TYPE_ORDER: CardType[] = ['operator', 'gear', 'tactic'];
-const TYPE_EN: Record<CardType, string> = { operator: 'OPERATOR', gear: 'GEAR', tactic: 'TACTIC' };
 const CURVE_MAX_COST = 6;
 
 export function DeckSelect({ mode, profile, difficulty, onChange, onStart, onBack, onEdit }: {
   mode: 'cpu' | 'online';
   profile: Profile;
   difficulty: Difficulty;
-  onChange: (p: { difficulty?: Difficulty }) => void;
+  onChange: (p: Partial<Profile>) => void;
   onStart: () => void;
   onBack: () => void;
   onEdit: () => void;
 }) {
   const [peek, setPeek] = useState<string | null>(null);
   const validation = validateDeck(profile.deck, profile.owned);
-  const unique = [...countCards(profile.deck).entries()].sort((a, b) => card(a[0]).cost - card(b[0]).cost);
   const curve = Array.from({ length: CURVE_MAX_COST + 1 }, (_, c) =>
     profile.deck.filter((id) => Math.min(CURVE_MAX_COST, card(id).cost) === c).length);
   const curvePeak = Math.max(1, ...curve);
-  const groups = TYPE_ORDER
-    .map((t) => ({ t, list: unique.filter(([id]) => card(id).type === t) }))
-    .filter((g) => g.list.length > 0);
 
   return (
     <div className="screen screen-scroll has-art-bg" style={{ '--screen-bg': cssUrl('bgs/bg-menu.webp') } as CSSProperties}>
@@ -43,11 +37,17 @@ export function DeckSelect({ mode, profile, difficulty, onChange, onStart, onBac
         <h2>{mode === 'cpu' ? 'CPU対戦' : 'オンライン対戦'}</h2>
       </div>
 
+      <DeckSlots
+        active={profile.activeDeck}
+        lengths={profile.decks.map((d) => d.length)}
+        onSelect={(i) => onChange(selectDeckSlot(profile, i))}
+      />
+
       <div className="deck-detail">
         <div className="deck-detail-head">
           <div>
-            <div className="deck-en">CUSTOM</div>
-            <div className="deck-name">マイデッキ<span>{profile.deck.length}/{DECK_SIZE}枚・所持カードのみ</span></div>
+            <div className="deck-en">SET {profile.activeDeck + 1}</div>
+            <div className="deck-name">出撃デッキ<span>{profile.deck.length}/{DECK_SIZE}枚・タップで詳細</span></div>
           </div>
           <button className="btn small" onClick={onEdit}>
             <Pencil size={14} /> 編成する
@@ -69,21 +69,12 @@ export function DeckSelect({ mode, profile, difficulty, onChange, onStart, onBac
           ))}
         </div>
 
-        {groups.map((g) => (
-          <section key={g.t} className="deck-group">
-            <h4>{TYPE_EN[g.t]}<span>{TYPE_LABEL[g.t]}・{g.list.reduce((s, [, n]) => s + n, 0)}枚</span></h4>
-            <div className="deck-cards">
-              {g.list.map(([id, n]) => (
-                <button key={id} className="deck-line" onClick={() => setPeek(id)}>
-                  <span className="deck-line-cost">{card(id).cost}</span>
-                  <CardIcon cardId={id} size={14} />
-                  <span className="deck-line-name">{card(id).name}</span>
-                  {n > 1 && <span className="deck-line-n">×{n}</span>}
-                </button>
-              ))}
-            </div>
-          </section>
-        ))}
+        <DeckRoster
+          cards={profile.deck}
+          profile={profile}
+          onCard={setPeek}
+          emptyHint="編成するを押してデッキを組み立ててください"
+        />
       </div>
 
       {mode === 'cpu' && (
@@ -119,7 +110,12 @@ export function DeckSelect({ mode, profile, difficulty, onChange, onStart, onBac
       {peek && (
         <div className="modal-bg" onClick={() => setPeek(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <CardDetail cardId={peek} />
+            <CardDetail
+              cardId={peek}
+              kira={hasKira(profile, peek)}
+              sign={hasSign(profile, peek)}
+              flow={hasFlow(profile, peek)}
+            />
             <button className="btn ghost small" onClick={() => setPeek(null)}>閉じる</button>
           </div>
         </div>

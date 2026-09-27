@@ -1,10 +1,35 @@
 import { BookOpen, Bot, ChevronRight, Dices, Layers, LayoutGrid, Pencil, Ticket, Volume2, VolumeX, Wifi } from 'lucide-react';
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { canFreeGacha } from '../gacha';
-import { isDeckReady, rankOf, type Profile } from '../profile';
-import { setBgm, setSoundEnabled, unlockAudio } from '../sfx';
+import { VOL_STEPS, isDeckReady, rankOf, type Profile, type VolStep } from '../profile';
+import { setBgm, setBgmVolume, setSeVolume, unlockAudio } from '../sfx';
 import { cssUrl } from '../ui/assets';
 import { RankBadge } from '../ui/RankBadge';
+
+function VolRow({ label, value, onChange }: {
+  label: string;
+  value: VolStep;
+  onChange: (v: VolStep) => void;
+}) {
+  return (
+    <div className="vol-row">
+      <span className="vol-label">{label}</span>
+      <div className="vol-steps" role="group" aria-label={label}>
+        {VOL_STEPS.map((step) => (
+          <button
+            key={step}
+            type="button"
+            className={value === step ? 'on' : value > step ? 'lit' : ''}
+            aria-pressed={value === step}
+            onClick={() => onChange(step)}
+          >
+            {step === 0 ? '×' : step}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, onDeckEdit, onGacha }: {
   profile: Profile;
@@ -18,10 +43,22 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(profile.name);
+  const [audioOpen, setAudioOpen] = useState(false);
+  const audioRef = useRef<HTMLDivElement>(null);
   const { tier, next, progress } = rankOf(profile.rp);
   const games = profile.wins + profile.losses + profile.draws;
   const ready = isDeckReady(profile);
   const freeGacha = canFreeGacha(profile.lastFreeGacha);
+  const muted = profile.bgmVol === 0 && profile.seVol === 0;
+
+  useEffect(() => {
+    if (!audioOpen) return;
+    const onDoc = (e: PointerEvent) => {
+      if (!audioRef.current?.contains(e.target as Node)) setAudioOpen(false);
+    };
+    document.addEventListener('pointerdown', onDoc);
+    return () => document.removeEventListener('pointerdown', onDoc);
+  }, [audioOpen]);
 
   const commitName = () => {
     const n = name.trim().slice(0, 12);
@@ -29,28 +66,39 @@ export function Title({ profile, onChange, onCpu, onOnline, onHowTo, onCards, on
     setEditing(false);
   };
 
+  const setBgmVol = (v: VolStep) => {
+    unlockAudio();
+    setBgmVolume(v);
+    if (v > 0) setBgm('menu');
+    else setBgm('off');
+    onChange({ bgmVol: v });
+  };
+  const setSeVol = (v: VolStep) => {
+    unlockAudio();
+    setSeVolume(v);
+    onChange({ seVol: v });
+  };
+
   return (
     <div className="screen title-screen has-art-bg" style={{ '--screen-bg': cssUrl('bgs/bg-title.webp') } as CSSProperties}>
       <div className="title-top">
         <span className="title-top-spacer" aria-hidden />
-        <button
-          className="icon-btn sound-toggle"
-          onClick={() => {
-            const nextSound = !profile.sound;
-            if (nextSound) {
-              setSoundEnabled(true);
-              setBgm('menu');
-              unlockAudio();
-            } else {
-              setSoundEnabled(false);
-              setBgm('off');
-            }
-            onChange({ sound: nextSound });
-          }}
-          aria-label="サウンド"
-        >
-          {profile.sound ? <Volume2 size={18} /> : <VolumeX size={18} />}
-        </button>
+        <div className="audio-wrap" ref={audioRef}>
+          <button
+            className="icon-btn sound-toggle"
+            onClick={() => { unlockAudio(); setAudioOpen((o) => !o); }}
+            aria-label="音量"
+            aria-expanded={audioOpen}
+          >
+            {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+          </button>
+          {audioOpen && (
+            <div className="audio-panel">
+              <VolRow label="BGM" value={profile.bgmVol} onChange={setBgmVol} />
+              <VolRow label="SE" value={profile.seVol} onChange={setSeVol} />
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="title-vert" aria-hidden>DECKSHOT — TACTICAL CARD BATTLE — VOL.01</div>

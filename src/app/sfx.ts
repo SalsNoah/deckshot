@@ -8,10 +8,14 @@ let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let seBus: GainNode | null = null;
 let noiseBuf: AudioBuffer | null = null;
-let enabled = true;
 
 export type BgmTrack = 'menu' | 'battle' | 'win' | 'lose' | 'gacha';
 export type BgmMode = 'off' | BgmTrack;
+/** 0 = mute … 4 = max (matches profile VolStep). */
+export type VolStep = 0 | 1 | 2 | 3 | 4;
+
+const VOL_SCALE = [0, 0.28, 0.5, 0.72, 1] as const;
+const SE_BASE = 0.52;
 
 let bgmMode: BgmMode = 'off';
 const bgmEls: Partial<Record<BgmTrack, HTMLAudioElement>> = {};
@@ -19,6 +23,8 @@ let activeTrack: BgmTrack | null = null;
 let unlockBound = false;
 /** Multiplier applied on top of BGM_VOLUME (e.g. duck during pack open). */
 let bgmGain = 1;
+let bgmVol: VolStep = 3;
+let seVol: VolStep = 3;
 
 const BGM_SRC: Record<BgmTrack, string> = {
   menu: 'audio/menu.mp3',
@@ -38,19 +44,43 @@ const BGM_VOLUME: Record<BgmTrack, number> = {
 
 const BGM_TRACKS = Object.keys(BGM_SRC) as BgmTrack[];
 
-export function setSoundEnabled(on: boolean) {
-  enabled = on;
-  if (!on) {
-    stopBgm();
-    if (master) master.gain.value = 0;
-  } else {
-    if (master) master.gain.value = 1;
-    if (bgmMode !== 'off') playBgm(bgmMode);
+function clampStep(n: number): VolStep {
+  if (n <= 0) return 0;
+  if (n >= 4) return 4;
+  return Math.floor(n) as VolStep;
+}
+
+function bgmOut(): number {
+  return VOL_SCALE[bgmVol] * bgmGain;
+}
+
+function applySeGain() {
+  if (seBus) seBus.gain.value = SE_BASE * VOL_SCALE[seVol];
+}
+
+function applyBgmElVolume() {
+  if (!activeTrack || !bgmEls[activeTrack]) return;
+  bgmEls[activeTrack]!.volume = BGM_VOLUME[activeTrack] * bgmOut();
+}
+
+/** BGM volume step 0–4. */
+export function setBgmVolume(step: number) {
+  bgmVol = clampStep(step);
+  if (bgmVol === 0) {
+    if (activeTrack && bgmEls[activeTrack]) bgmEls[activeTrack]!.volume = 0;
+    return;
   }
+  applyBgmElVolume();
+  if (bgmMode !== 'off' && (!activeTrack || bgmEls[activeTrack]?.paused)) playBgm(bgmMode);
+}
+
+/** SE volume step 0–4. */
+export function setSeVolume(step: number) {
+  seVol = clampStep(step);
+  applySeGain();
 }
 
 function ac(): AudioContext | null {
-  if (!enabled) return null;
   if (!ctx) {
     const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctor) return null;
@@ -58,7 +88,7 @@ function ac(): AudioContext | null {
     master = ctx.createGain();
     master.gain.value = 1;
     seBus = ctx.createGain();
-    seBus.gain.value = 0.52;
+    applySeGain();
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -18;
     comp.knee.value = 12;
@@ -79,14 +109,9 @@ function ac(): AudioContext | null {
 
 /** Call from a user gesture to unlock audio on mobile. */
 export function unlockAudio() {
-  // Resume Web Audio even if SE are currently muted — needed when toggling sound on.
-  const wasEnabled = enabled;
-  if (!enabled) enabled = true;
   ac();
-  if (!wasEnabled) enabled = false;
-
   ensureBgmElements();
-  if (enabled && bgmMode !== 'off') playBgm(bgmMode);
+  if (bgmVol > 0 && bgmMode !== 'off') playBgm(bgmMode);
 }
 
 /** Bind once: first pointer/key/touch starts BGM after autoplay policy blocks mount play. */
@@ -646,10 +671,13 @@ function stopBgm() {
 }
 
 function playBgm(mode: BgmTrack) {
-  if (!enabled) return;
+  if (bgmVol === 0) return;
   ensureBgmElements();
   const next = bgmEls[mode]!;
-  if (activeTrack === mode && !next.paused) return;
+  if (activeTrack === mode && !next.paused) {
+    applyBgmElVolume();
+    return;
+  }
 
   for (const track of BGM_TRACKS) {
     const el = bgmEls[track];
@@ -663,7 +691,7 @@ function playBgm(mode: BgmTrack) {
   }
 
   next.muted = false;
-  next.volume = BGM_VOLUME[mode] * bgmGain;
+  next.volume = BGM_VOLUME[mode] * bgmOut();
   activeTrack = mode;
   void next.play().catch(() => {
     // Autoplay blocked until unlockAudio / bindAudioUnlock runs on a gesture.
@@ -673,13 +701,13 @@ function playBgm(mode: BgmTrack) {
 
 export function setBgm(mode: BgmMode) {
   if (bgmMode === mode) {
-    if (mode !== 'off' && enabled && (activeTrack !== mode || !!bgmEls[mode]?.paused)) {
+    if (mode !== 'off' && bgmVol > 0 && (activeTrack !== mode || !!bgmEls[mode]?.paused)) {
       playBgm(mode);
     }
     return;
   }
   bgmMode = mode;
-  if (mode === 'off' || !enabled) {
+  if (mode === 'off' || bgmVol === 0) {
     stopBgm();
     return;
   }
@@ -689,13 +717,11 @@ export function setBgm(mode: BgmMode) {
 /** Multiply current BGM volume (1 = normal). Used to duck under pack-open SFX. */
 export function setBgmGain(scale: number) {
   bgmGain = Math.max(0, Math.min(1, scale));
-  if (activeTrack && bgmEls[activeTrack] && bgmMode !== 'off') {
-    bgmEls[activeTrack]!.volume = BGM_VOLUME[activeTrack] * bgmGain;
-  }
+  applyBgmElVolume();
 }
 
 export function vibrate(pattern: number | number[]) {
-  if (!enabled) return;
+  if (seVol === 0) return;
   try {
     navigator.vibrate?.(pattern);
   } catch {
