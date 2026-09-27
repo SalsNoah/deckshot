@@ -1,10 +1,9 @@
 import { Check, ChevronRight } from 'lucide-react';
 import { useMemo, useState, type CSSProperties } from 'react';
 import {
-  ALL_CARDS, DECK_SIZE, DECKS, MAX_COPIES, card, countCards, validateDeck, type CardType,
+  ALL_CARDS, DECK_SIZE, MAX_COPIES, countCards, validateDeck, type CardType,
 } from '../../engine';
-import { DECK_SLOTS, type Profile } from '../profile';
-import { hasFlow, hasKira, hasSign } from '../profile';
+import { DECK_SLOTS, hasFlow, hasKira, hasSign, type Profile } from '../profile';
 import { DeckRoster, DeckSlots } from '../ui/DeckRoster';
 import { CardDetail, HandCard } from '../ui/cards';
 import { cssUrl } from '../ui/assets';
@@ -69,22 +68,6 @@ export function DeckEdit({ profile, onChange, onBack }: {
     });
   };
 
-  const applyTemplate = (deckId: string) => {
-    const preset = DECKS.find((d) => d.id === deckId);
-    if (!preset) return;
-    const missing: string[] = [];
-    const counts = countCards(preset.cards);
-    for (const [id, n] of counts) {
-      if ((profile.owned[id] ?? 0) < n) missing.push(card(id).name);
-    }
-    if (missing.length) {
-      flash(`所持不足: ${missing.slice(0, 3).join('、')}${missing.length > 3 ? '…' : ''}`);
-      return;
-    }
-    setDraft([...preset.cards]);
-    flash(`${preset.name}を適用`);
-  };
-
   const save = () => {
     const v = validateDeck(draft, profile.owned);
     if (!v.ok) {
@@ -114,15 +97,6 @@ export function DeckEdit({ profile, onChange, onBack }: {
         lengths={drafts.map((d) => d.length)}
         onSelect={setSlot}
       />
-
-      <div className="deck-templates">
-        <span>テンプレ:</span>
-        {DECKS.map((d) => (
-          <button key={d.id} className="btn small ghost" style={{ color: d.color }} onClick={() => applyTemplate(d.id)}>
-            {d.en}
-          </button>
-        ))}
-      </div>
 
       <section className="deck-detail">
         <div className="deck-detail-head">
