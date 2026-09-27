@@ -1,4 +1,4 @@
-import { Bomb, ChevronRight, CircleHelp, Coins, Crosshair, Flag, Flame, Home, MessageCircle, Radiation, X } from 'lucide-react';
+import { Bomb, ChevronRight, CircleHelp, Coins, Crosshair, Flag, Flame, Home, Layers, MessageCircle, Radiation, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import { flushSync } from 'react-dom';
 import {
@@ -11,12 +11,14 @@ import { EMOTES, type EmoteId } from '../../net/protocol';
 import type { MatchConnection } from '../match';
 import { hasFlow, hasKira, hasSign } from '../profile';
 import { setBgm, sfx, vibrate, type ShotKind } from '../sfx';
+import { gateAllows, TUTORIAL_TURNS, tutorialSteps, type TutFocus, type TutInput } from '../tutorial';
 import {
   CalloutView, CutInView, FxView, HS_COLOR, REVEAL_FLIP_AT, REVEAL_FLIP_GAP, RevealStage, revealItems,
   type Callout, type CalloutVariant, type CutIn, type Fx, type FxInput, type PopTone, type RevealState, type ZoneEffect,
 } from '../ui/battleFx';
 import { CardDetail, CardStrip, HandCard, preloadCardArt, UnitTile } from '../ui/cards';
 import { cssUrl } from '../ui/assets';
+import { Coach } from '../ui/Coach';
 import { CardIcon, StreakIcon, WeaponIcon } from '../ui/icons';
 import { REASON_TEXT, TARGET_HINT } from '../ui/text';
 import { zoneVisual } from '../ui/zoneArt';
@@ -159,10 +161,12 @@ function describeAction(view: GameView, a: Action): { icon: string; label: strin
   }
 }
 
-export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned }: {
+export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned, tutorial }: {
   conn: MatchConnection;
   onExit: () => void;
   onFinish: (r: MatchResult) => number | null;
+  /** Coached training match: only the scripted taps go through. `first` = first launch (a deck pick follows). */
+  tutorial?: { first: boolean; onLeave: () => void };
   /** Player's owned kira operators — cosmetic on hand / detail. */
   kiraOwned?: Record<string, number>;
   /** Player's owned signed operators — neon signature overlay. */
@@ -195,6 +199,8 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
   const [result, setResult] = useState<(MatchResult & { rp: number | null }) | null>(null);
   const [oppLeft, setOppLeft] = useState(false);
   const [intro, setIntro] = useState(true);
+  const [tutIdx, setTutIdx] = useState(0);
+  const [tutNudge, setTutNudge] = useState(0);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -828,6 +834,8 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
     } else {
       setPhase('plan');
       setTimeLeft(conn.planSeconds);
+      setTutIdx(0);
+      setTutNudge(0);
     }
   }, []);
 
@@ -912,6 +920,42 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
   }, [sel, view, plan, phase]);
   const legalUnitKeys = useMemo(() => new Set(targets?.units.map(refKey) ?? []), [targets]);
 
+  // ---------- tutorial ----------
+  const coaching = !!tutorial;
+  const tutSteps = useMemo(() => (coaching ? tutorialSteps(view.turn) : []), [coaching, view.turn]);
+  const tutStep = coaching && phase === 'plan' && !intro ? tutSteps[tutIdx] ?? null : null;
+  const tutGate = tutStep?.gate;
+
+  const nudge = () => {
+    sfx.deny();
+    setTutNudge((n) => n + 1);
+  };
+  /** In the tutorial only the coached input goes through; anything else shakes the coach instead. */
+  const coached = (input: TutInput) => {
+    if (!coaching) return true;
+    if (gateAllows(tutGate, input)) return true;
+    nudge();
+    return false;
+  };
+  const tutNext = () => {
+    if (coaching) setTutIdx((i) => i + 1);
+  };
+
+  const tutLocate = (focus?: TutFocus): Element | null => {
+    const root = rootRef.current;
+    if (!root || !focus) return null;
+    const [kind, arg] = focus.split(':');
+    if (kind === 'hand') {
+      const i = view.self.hand.findIndex((h) => h.cardId === arg);
+      return i >= 0 ? root.querySelector('[data-tut="hand"]')?.children[i] ?? null : null;
+    }
+    if (kind === 'unit') {
+      const u = board.zones.flatMap((z) => z.units[me]).find((x) => x.cardId === arg);
+      return u ? root.querySelector(`[data-uid="${u.uid}"]`) : null;
+    }
+    return root.querySelector(`[data-tut="${focus}"]`);
+  };
+
   const addAction = (a: Action) => {
     const err = tryAdd(view, plan, a);
     if (err) {
@@ -926,6 +970,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
   };
 
   const removeAction = (index: number) => {
+    if (coaching) return nudge();
     const rest = plan.actions.filter((_, i) => i !== index);
     setPlan({ actions: checkPlan(view, { actions: rest }).valid });
     sfx.select();
@@ -933,6 +978,16 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
 
   const onHandClick = (hid: string) => {
     if (phase !== 'plan') return;
+    if (coaching) {
+      const h = view.self.hand.find((x) => x.hid === hid);
+      const reserved = plan.actions.some((a) => 'hid' in a && a.hid === hid);
+      if (!h || reserved || sel) return nudge();
+      if (!coached({ k: 'hand', card: h.cardId })) return;
+      sfx.select();
+      setSel({ kind: 'hand', hid });
+      tutNext();
+      return;
+    }
     const idx = plan.actions.findIndex((a) => 'hid' in a && a.hid === hid);
     if (idx >= 0) {
       removeAction(idx);
@@ -947,20 +1002,37 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
   };
 
   const onZoneClick = (zone: ZoneId) => {
-    if (phase !== 'plan' || !sel) return;
-    if (sel.kind === 'streak') {
-      addAction({ t: 'streak', id: sel.id, zone });
+    if (phase !== 'plan') return;
+    let a: Action | null = null;
+    if (sel?.kind === 'streak') a = { t: 'streak', id: sel.id, zone };
+    else if (sel && selectedDef?.type === 'operator') a = { t: 'deploy', hid: sel.hid, zone };
+    else if (sel && selectedDef?.type === 'tactic' && selectedDef.target === 'zone') a = { t: 'tactic', hid: sel.hid, zone };
+    if (!a) {
+      if (coaching) nudge();
       return;
     }
-    if (!selectedDef) return;
-    if (selectedDef.type === 'operator') addAction({ t: 'deploy', hid: sel.hid, zone });
-    else if (selectedDef.type === 'tactic' && selectedDef.target === 'zone') addAction({ t: 'tactic', hid: sel.hid, zone });
+    if (coached({ k: 'zone', zone }) && addAction(a)) tutNext();
   };
 
   const onUnitClick = (ref: UnitRef, u: UnitSnap, e: ReactMouseEvent) => {
     e.stopPropagation();
     if (phase !== 'plan') {
       if (!('hid' in ref)) setDetail({ cardId: u.cardId, unit: u });
+      return;
+    }
+    if (coaching) {
+      if (sel && (sel.kind === 'streak' || selectedDef?.type === 'operator' || selectedDef?.target === 'zone')) {
+        onZoneClick(u.zone);
+        return;
+      }
+      const real = !('hid' in ref) && !u.uid.startsWith('mv:');
+      if (!coached({ k: 'unit', card: u.cardId, mine: real && u.owner === me })) return;
+      if (sel?.kind === 'hand' && selectedDef?.type === 'gear') {
+        if (addAction({ t: 'gear', hid: sel.hid, target: ref })) tutNext();
+      } else if (!sel) {
+        setDetail({ cardId: u.cardId, unit: u, movable: true });
+        tutNext();
+      }
       return;
     }
     if (sel?.kind === 'hand' && selectedDef) {
@@ -996,6 +1068,16 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
 
   const onStreakClick = (id: StreakId) => {
     if (phase !== 'plan') return;
+    if (coaching) {
+      if (sel) return nudge();
+      if (!coached({ k: 'streak', id })) return;
+      if (STREAKS[id].target === 'zone') {
+        sfx.select();
+        setSel({ kind: 'streak', id });
+        tutNext();
+      } else if (addAction({ t: 'streak', id })) tutNext();
+      return;
+    }
     if (id === 'uav') {
       if (uavOn) {
         showToast('UAV稼働中：相手の手札を表示している');
@@ -1030,6 +1112,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
 
   const submit = () => {
     if (phaseRef.current !== 'plan') return;
+    if (!coached({ k: 'ready' })) return;
     const p = { actions: checkPlan(view, planRef.current).valid };
     setSel(null);
     setDetail(null);
@@ -1041,6 +1124,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
   /** Passing a whole turn needs a 0.4s hold so a stray tap can't throw it away. */
   const startPassHold = () => {
     if (phaseRef.current !== 'plan' || planRef.current.actions.length > 0) return;
+    if (coaching) return nudge();
     setHolding(true);
     passHoldRef.current = window.setTimeout(() => {
       passHoldRef.current = null;
@@ -1060,13 +1144,28 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
 
   const toggleResupply = () => {
     if (phase !== 'plan') return;
+    if (coaching) {
+      if (sel) return nudge();
+      if (coached({ k: 'resupply' }) && addAction({ t: 'resupply' })) tutNext();
+      return;
+    }
     const idx = plan.actions.findIndex((a) => a.t === 'resupply');
     if (idx >= 0) removeAction(idx);
     else addAction({ t: 'resupply' });
   };
 
   const moveUnit = (uid: string, zone: ZoneId) => {
-    if (addAction({ t: 'move', uid, zone })) setDetail(null);
+    if (!coached({ k: 'move', zone })) return;
+    if (addAction({ t: 'move', uid, zone })) {
+      setDetail(null);
+      tutNext();
+    }
+  };
+
+  /** The rotate lesson opens this modal, so it stays up until the move is reserved. */
+  const closeDetail = () => {
+    if (tutGate?.k === 'move') return nudge();
+    setDetail(null);
   };
 
   const sendEmote = (id: EmoteId) => {
@@ -1190,7 +1289,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
 
       {/* Scoreboard: both scores side by side around the turn, like an FPS round HUD. */}
       <div className="sb">
-        <div className="sb-row">
+        <div className="sb-row" data-tut="score">
           <ScorePips score={myScore} target={target} side="me" hot={onMatchPoint === me} />
           <div className="sb-score me">
             <b key={myScore}>{myScore}</b>
@@ -1236,7 +1335,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
       </div>
 
       {/* Board */}
-      <div className="board">
+      <div className="board" data-tut="board">
         {ZONES.map((zi) => {
           const z = board.zones[zi];
           const mod = ZONE_MODS[z.modId];
@@ -1261,6 +1360,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
               } as CSSProperties}
               ref={(el) => { zoneRefs.current[zi] = el; }}
               onClick={() => onZoneClick(zi)}
+              data-tut={`zone:${zi}`}
             >
               <div className={`zone-head ${ctrl === me ? 'ctrl-me' : ctrl === opp ? 'ctrl-opp' : ''}`}>
                 <div className="zone-label">{ZONE_LABELS[zi]}</div>
@@ -1344,7 +1444,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
         ))}
 
         {/* Killstreak track: one segment per streak; each button ends at the notch where it unlocks. */}
-        <div className="streak-track" ref={trackRef}>
+        <div className="streak-track" ref={trackRef} data-tut="sp">
           <span className="sp-label">SP<b key={sp}>{sp}</b></span>
           <div className="st-rail">
             <div className="st-bar">
@@ -1366,6 +1466,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
                   style={{ '--pos': (i + 1) / STREAK_ORDER.length } as CSSProperties}
                   onClick={() => onStreakClick(id)}
                   disabled={phase !== 'plan'}
+                  data-tut={`streak:${id}`}
                 >
                   <StreakIcon id={id} size={13} />
                   <span>{s.name}</span>
@@ -1379,7 +1480,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
         {/* Planned actions */}
         <div className="plan-chips">
           {phase === 'plan' && plan.actions.length === 0 && !sel && <span className="plan-empty">カードをタップして作戦を立てよう</span>}
-          {phase === 'plan' && sel?.kind === 'streak' && <span className="plan-hint">{hint}<button onClick={() => setSel(null)} aria-label="取り消し"><X size={12} /></button></span>}
+          {phase === 'plan' && sel?.kind === 'streak' && <span className="plan-hint">{hint}<button onClick={() => (coaching ? nudge() : setSel(null))} aria-label="取り消し"><X size={12} /></button></span>}
           {phase === 'plan' && !sel && plan.actions.map((a, i) => {
             const d = describeAction(view, a);
             return (
@@ -1399,16 +1500,16 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
               <CardStrip cardId={selectedCard.cardId} />
               <div className="preview-actions">
                 {selectedDef?.type === 'tactic' && selectedDef.target === 'none' ? (
-                  <button className="btn primary small" onClick={() => addAction({ t: 'tactic', hid: selectedCard.hid })}>使用する</button>
+                  <button className="btn primary small" onClick={() => (coaching ? nudge() : addAction({ t: 'tactic', hid: selectedCard.hid }))}>使用する</button>
                 ) : (
                   <span className="preview-hint">{hint}</span>
                 )}
-                <button className="btn ghost small" onClick={() => setSel(null)}>キャンセル</button>
+                <button className="btn ghost small" onClick={() => (coaching ? nudge() : setSel(null))}>キャンセル</button>
               </div>
             </div>
           )}
 
-          <div className="hand" style={{ '--n': Math.max(1, view.self.hand.length) } as CSSProperties}>
+          <div className="hand" style={{ '--n': Math.max(1, view.self.hand.length) } as CSSProperties} data-tut="hand">
             {view.self.hand.map((h) => {
               const def = card(h.cardId);
               const used = usedHids.has(h.hid);
@@ -1431,7 +1532,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
           </div>
 
           <div className="action-bar">
-            <div className="credits" title="クレジット">
+            <div className="credits" title="クレジット" data-tut="credits">
               <Coins size={16} />
               <b key={credits}>{credits}</b>
               <span>¢</span>
@@ -1443,6 +1544,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
               disabled={phase !== 'plan'}
               onClick={toggleResupply}
               title="クレジットを払ってカードを1枚引く（使えるのは次のターンから・1ターン1回）"
+              data-tut="resupply"
             >
               補給<small>{RESUPPLY_COST}¢</small>
             </button>
@@ -1455,6 +1557,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
               onPointerUp={() => endPassHold(true)}
               onPointerLeave={() => endPassHold(false)}
               onPointerCancel={() => endPassHold(false)}
+              data-tut="ready"
             >
               {phase === 'plan' ? (
                 hasActions ? <><b>READY</b><span className="rb-count">▶ {plan.actions.length}</span></> : <><b>PASS</b><span className="rb-note">長押し</span></>
@@ -1483,19 +1586,19 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
 
       {/* Unit detail */}
       {detail && (
-        <div className="modal-bg" onClick={() => setDetail(null)}>
+        <div className="modal-bg" onClick={closeDetail}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <CardDetail cardId={detail.cardId} unit={detail.unit} kira={hasKira({ kiraOwned }, detail.cardId)} sign={hasSign({ signOwned }, detail.cardId)} flow={hasFlow({ flowOwned }, detail.cardId)} />
             {detail.movable && detail.unit && phase === 'plan' && (
               <div className="move-btns">
                 {[detail.unit.zone - 1, detail.unit.zone + 1].filter((z) => z >= 0 && z <= 2).map((z) => (
-                  <button key={z} className="btn small" onClick={() => moveUnit(detail.unit!.uid, z as ZoneId)}>
+                  <button key={z} className="btn small" onClick={() => moveUnit(detail.unit!.uid, z as ZoneId)} data-tut={`move:${z}`}>
                     {ZONE_LABELS[z]}へローテ（1¢）
                   </button>
                 ))}
               </div>
             )}
-            <button className="btn ghost small" onClick={() => setDetail(null)}>閉じる</button>
+            <button className="btn ghost small" onClick={closeDetail}>閉じる</button>
           </div>
         </div>
       )}
@@ -1504,7 +1607,11 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
         <div className="modal-bg" onClick={() => setMenuOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>メニュー</h3>
-            <button className="btn danger" onClick={() => { setMenuOpen(false); conn.surrender(); }} disabled={phase === 'over'}>降参する</button>
+            {tutorial ? (
+              <button className="btn danger" onClick={() => { setMenuOpen(false); tutorial.onLeave(); }}>チュートリアルをスキップ</button>
+            ) : (
+              <button className="btn danger" onClick={() => { setMenuOpen(false); conn.surrender(); }} disabled={phase === 'over'}>降参する</button>
+            )}
             <button className="btn ghost" onClick={() => setMenuOpen(false)}>戻る</button>
           </div>
         </div>
@@ -1525,11 +1632,24 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
             <h3>相手が切断しました</h3>
             <button className="hud-btn hud-main hud-primary" style={{ '--a': '#ff4655' } as CSSProperties} onClick={onExit}>
               <span className="hud-ico"><Home size={22} /></span>
-              <span className="hud-txt"><b>TITLE</b><small>タイトルへ</small></span>
+              <span className="hud-txt"><b>HOME</b><small>ホームへ</small></span>
               <ChevronRight className="hud-go" size={22} />
             </button>
           </div>
         </div>
+      )}
+
+      {tutorial && tutStep && !helpOpen && !menuOpen && (
+        <Coach
+          step={tutStep}
+          stepKey={`${view.turn}-${tutIdx}`}
+          turn={view.turn}
+          turns={TUTORIAL_TURNS}
+          locate={() => tutLocate(tutStep.focus)}
+          nudge={tutNudge}
+          onNext={tutNext}
+          onSkip={tutorial.onLeave}
+        />
       )}
 
       {result && (
@@ -1539,6 +1659,7 @@ export function Battle({ conn, onExit, onFinish, kiraOwned, signOwned, flowOwned
           onRematch={() => conn.rematch()}
           onExit={onExit}
           canRematch={!oppLeft}
+          tutorial={tutorial}
         />
       )}
     </div>
@@ -1580,12 +1701,13 @@ function ScorePips({ score, target, side, hot }: { score: number; target: number
   );
 }
 
-function ResultOverlay({ result, oppName, onRematch, onExit, canRematch }: {
+function ResultOverlay({ result, oppName, onRematch, onExit, canRematch, tutorial }: {
   result: MatchResult & { rp: number | null };
   oppName: string;
   onRematch: () => void;
   onExit: () => void;
   canRematch: boolean;
+  tutorial?: { first: boolean; onLeave: () => void };
 }) {
   const { winner, me, view, reason } = result;
   const outcome = winner === 'draw' ? 'DRAW' : winner === me ? 'VICTORY' : 'DEFEAT';
@@ -1612,20 +1734,38 @@ function ResultOverlay({ result, oppName, onRematch, onExit, canRematch }: {
         {result.rp !== null && (
           <div className={`result-rp ${result.rp > 0 ? 'up' : result.rp < 0 ? 'down' : ''}`}>{rpShown > 0 ? '+' : ''}{rpShown} RP</div>
         )}
-        <div className="result-btns">
-          {canRematch && (
-            <button className="hud-btn hud-main hud-primary" style={{ '--a': '#ff4655' } as CSSProperties} onClick={onRematch}>
-              <span className="hud-ico"><Flame size={22} /></span>
-              <span className="hud-txt"><b>REMATCH</b><small>もう一戦</small></span>
+        {tutorial ? (
+          <div className="result-btns">
+            <p className="result-note">
+              {tutorial.first
+                ? '訓練完了！ ルールと操作はこれでひと通りだ。最後に、あなたの最初のデッキを選ぼう。'
+                : '訓練完了！ 操作に迷ったら、いつでもまたここで復習できる。'}
+            </p>
+            <button className="hud-btn hud-main hud-primary" onClick={tutorial.onLeave}>
+              <span className="hud-ico">{tutorial.first ? <Layers size={22} /> : <Home size={22} />}</span>
+              <span className="hud-txt">
+                <b>{tutorial.first ? 'NEXT' : 'HOME'}</b>
+                <small>{tutorial.first ? 'デッキを選ぶ' : 'ホームへ'}</small>
+              </span>
               <ChevronRight className="hud-go" size={22} />
             </button>
-          )}
-          <button className="hud-btn hud-main" style={{ '--a': '#2ee6d6' } as CSSProperties} onClick={onExit}>
-            <span className="hud-ico"><Home size={22} /></span>
-            <span className="hud-txt"><b>TITLE</b><small>タイトルへ</small></span>
-            <ChevronRight className="hud-go" size={22} />
-          </button>
-        </div>
+          </div>
+        ) : (
+          <div className="result-btns">
+            {canRematch && (
+              <button className="hud-btn hud-main hud-primary" style={{ '--a': '#ff4655' } as CSSProperties} onClick={onRematch}>
+                <span className="hud-ico"><Flame size={22} /></span>
+                <span className="hud-txt"><b>REMATCH</b><small>もう一戦</small></span>
+                <ChevronRight className="hud-go" size={22} />
+              </button>
+            )}
+            <button className="hud-btn hud-main" style={{ '--a': '#2ee6d6' } as CSSProperties} onClick={onExit}>
+              <span className="hud-ico"><Home size={22} /></span>
+              <span className="hud-txt"><b>HOME</b><small>ホームへ</small></span>
+              <ChevronRight className="hud-go" size={22} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

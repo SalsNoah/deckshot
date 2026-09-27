@@ -1,4 +1,4 @@
-import { Bomb, Check, ChevronRight, Coins, Crosshair, Flag, Hand, Radiation, Target } from 'lucide-react';
+import { Bomb, Check, ChevronRight, Coins, Crosshair, Flag, GraduationCap, Hand, Radiation, Target } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { cssUrl } from '../ui/assets';
 import { KEYWORD_TEXT } from '../ui/text';
@@ -73,13 +73,18 @@ export function HowToContent({ compact }: { compact?: boolean }) {
   );
 }
 
-export function HowTo({ onBack }: { onBack: () => void }) {
+export function HowTo({ onBack, onTutorial }: { onBack: () => void; onTutorial: () => void }) {
   return (
     <div className="screen screen-scroll has-art-bg" style={{ '--screen-bg': cssUrl('bgs/bg-menu.webp') } as CSSProperties}>
       <div className="screen-head">
         <button className="btn ghost small" onClick={onBack}>← 戻る</button>
         <h2>遊び方</h2>
       </div>
+      <button className="hud-btn hud-main howto-train" onClick={onTutorial}>
+        <span className="hud-ico"><GraduationCap size={20} /></span>
+        <span className="hud-txt"><b>TRAINING</b><small>操作チュートリアルをもう一度プレイ</small></span>
+        <ChevronRight className="hud-go" size={20} />
+      </button>
       <HowToContent />
       <button className="hud-btn hud-main hud-primary" onClick={onBack}>
         <span className="hud-ico"><Check size={22} /></span>

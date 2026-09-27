@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { DECKS } from '../engine';
 import { LocalCpuMatch, type MatchConnection } from './match';
 import type { OnlineMatch } from './online';
-import { isDeckReady, loadProfile, matchRpDelta, saveProfile, applyOperatorMatchUses, type Profile } from './profile';
+import { isDeckReady, loadProfile, matchRpDelta, saveProfile, starterGrant, applyOperatorMatchUses, type Profile } from './profile';
 import { bindAudioUnlock, setBgm, setBgmVolume, setSeVolume, unlockAudio } from './sfx';
+import { TutorialMatch } from './tutorial';
 import { Battle, type MatchResult } from './screens/Battle';
 import { Cards } from './screens/Cards';
 import { DeckEdit } from './screens/DeckEdit';
@@ -12,22 +13,27 @@ import { Gacha } from './screens/Gacha';
 import { HowTo } from './screens/HowTo';
 import { Lobby } from './screens/Lobby';
 import { AnimPreview } from './screens/AnimPreview';
+import { Splash } from './screens/Splash';
+import { StarterDeck } from './screens/StarterDeck';
 import { Title } from './screens/Title';
 
 type Screen =
+  | { name: 'splash' }
   | { name: 'title' }
   | { name: 'deck'; mode: 'cpu' | 'online' }
   | { name: 'deckEdit'; back: Screen }
   | { name: 'gacha' }
   | { name: 'lobby' }
-  | { name: 'battle'; conn: MatchConnection; key: number }
+  /** `tutorial`: the coached training match; 'first' continues to the starter deck pick. */
+  | { name: 'battle'; conn: MatchConnection; key: number; tutorial?: 'first' | 'replay' }
+  | { name: 'starter' }
   | { name: 'howto'; next?: Screen }
   | { name: 'cards' }
   | { name: 'animPreview' };
 
 export function App() {
   const [profile, setProfile] = useState<Profile>(loadProfile);
-  const [screen, setScreen] = useState<Screen>({ name: 'title' });
+  const [screen, setScreen] = useState<Screen>({ name: 'splash' });
   const profileRef = useRef(profile);
   profileRef.current = profile;
 
@@ -124,9 +130,42 @@ export function App() {
     } else setScreen({ name: 'deck', mode: 'cpu' });
   };
 
+  const startTutorial = (mode: 'first' | 'replay') => {
+    unlockAudio();
+    setScreen({ name: 'battle', conn: new TutorialMatch(profileRef.current.name), key: Date.now(), tutorial: mode });
+  };
+
+  /** Finishing or skipping the first-run tutorial moves on to the deck pick; a replay goes home. */
+  const leaveTutorial = (conn: MatchConnection, mode: 'first' | 'replay') => {
+    conn.close();
+    if (mode === 'first') {
+      update({ onboarding: 'deck' });
+      setScreen({ name: 'starter' });
+    } else {
+      setScreen({ name: 'title' });
+    }
+  };
+
+  const onSplashStart = () => {
+    const step = profileRef.current.onboarding;
+    if (step === 'tutorial') startTutorial('first');
+    else if (step === 'deck') setScreen({ name: 'starter' });
+    else setScreen({ name: 'title' });
+  };
+
   return (
     <div className="app">
       <div key={screen.name} className="shutter" aria-hidden />
+      {screen.name === 'splash' && <Splash onStart={onSplashStart} />}
+      {screen.name === 'starter' && (
+        <StarterDeck
+          profile={profile}
+          onPick={(deckId) => {
+            update(starterGrant(deckId));
+            setScreen({ name: 'title' });
+          }}
+        />
+      )}
       {screen.name === 'title' && (
         <Title
           profile={profile}
@@ -173,10 +212,22 @@ export function App() {
         />
       )}
       {screen.name === 'battle' && (
-        <Battle key={screen.key} conn={screen.conn} onExit={exitBattle} onFinish={onFinish} kiraOwned={profile.kiraOwned} signOwned={profile.signOwned} flowOwned={profile.flowOwned} />
+        <Battle
+          key={screen.key}
+          conn={screen.conn}
+          onExit={exitBattle}
+          onFinish={screen.tutorial ? () => null : onFinish}
+          kiraOwned={profile.kiraOwned}
+          signOwned={profile.signOwned}
+          flowOwned={profile.flowOwned}
+          tutorial={screen.tutorial ? {
+            first: screen.tutorial === 'first',
+            onLeave: () => leaveTutorial(screen.conn, screen.tutorial!),
+          } : undefined}
+        />
       )}
       {screen.name === 'howto' && (
-        <HowTo onBack={() => setScreen(screen.next ?? { name: 'title' })} />
+        <HowTo onBack={() => setScreen(screen.next ?? { name: 'title' })} onTutorial={() => startTutorial('replay')} />
       )}
       {screen.name === 'cards' && (
         <Cards profile={profile} onBack={() => setScreen({ name: 'title' })} onPreview={() => setScreen({ name: 'animPreview' })} />

@@ -8,6 +8,9 @@ export type VolStep = 0 | 1 | 2 | 3 | 4;
 export const VOL_STEPS: VolStep[] = [0, 1, 2, 3, 4];
 export const VOL_DEFAULT: VolStep = 3;
 
+/** First-run flow: the training match, then the starter deck pick. */
+export type Onboarding = 'tutorial' | 'deck' | 'done';
+
 export function clampVol(n: unknown, fallback: VolStep = VOL_DEFAULT): VolStep {
   const v = typeof n === 'number' ? Math.floor(n) : fallback;
   if (v <= 0) return 0;
@@ -52,6 +55,7 @@ export interface Profile {
   /** SE volume 0–4. */
   seVol: VolStep;
   seenHowTo: boolean;
+  onboarding: Onboarding;
 }
 
 /** Persist cards into the active slot and keep `deck` in sync. */
@@ -115,6 +119,7 @@ const DEFAULT: Profile = {
   bgmVol: VOL_DEFAULT,
   seVol: VOL_DEFAULT,
   seenHowTo: false,
+  onboarding: 'tutorial',
 };
 
 function migrateDecks(raw: Record<string, unknown>, deck: string[]): { decks: string[][]; activeDeck: number; deck: string[] } {
@@ -199,6 +204,22 @@ function migrate(raw: Partial<Profile> & Record<string, unknown>): Profile {
     difficulty: (raw.difficulty as Difficulty) ?? DEFAULT.difficulty,
     ...vols,
     seenHowTo: !!raw.seenHowTo,
+    // Saves from before the tutorial existed belong to players who are already past first launch.
+    onboarding: raw.onboarding === 'tutorial' || raw.onboarding === 'deck' ? raw.onboarding : 'done',
+  };
+}
+
+/** First-run pick: the chosen preset becomes the whole collection and deck slot 1. */
+export function starterGrant(deckId: string): Pick<Profile, 'owned' | 'deck' | 'decks' | 'activeDeck' | 'deckId' | 'onboarding' | 'seenHowTo'> {
+  const preset = DECKS.find((d) => d.id === deckId) ?? DECKS[0];
+  return {
+    owned: ownedFromList(preset.cards),
+    deck: [...preset.cards],
+    decks: emptySlots(preset.cards),
+    activeDeck: 0,
+    deckId: 'custom',
+    onboarding: 'done',
+    seenHowTo: true,
   };
 }
 

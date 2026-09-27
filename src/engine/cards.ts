@@ -550,8 +550,19 @@ const CUSTOM_DECK: DeckDef = {
   cards: [],
 };
 
+const TRAINING_DECK: DeckDef = {
+  id: 'training',
+  name: '訓練',
+  en: 'TRAINING',
+  style: 'チュートリアル',
+  description: '操作を覚えるための固定デッキ。',
+  color: '#ffc247',
+  cards: [],
+};
+
 export function deckById(id: string): DeckDef {
   if (id === 'custom') return CUSTOM_DECK;
+  if (id === 'training') return TRAINING_DECK;
   return DECKS.find((d) => d.id === id) ?? DECKS[0];
 }
 

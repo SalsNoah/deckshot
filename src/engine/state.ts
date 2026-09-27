@@ -31,6 +31,10 @@ export interface CreateGameOptions {
   players: [PlayerSetup, PlayerSetup];
   config?: Partial<GameConfig>;
   zoneMods?: [string, string, string];
+  /** Who acts first on turn 1; random when omitted. */
+  initiative?: PlayerId;
+  /** Skip the shuffle: each deck is drawn in the order its card list is given. */
+  stacked?: boolean;
 }
 
 function newPlayer(id: PlayerId, setup: PlayerSetup): PlayerState {
@@ -73,9 +77,11 @@ export function createGame(opts: CreateGameOptions): GameState {
   };
   const mods = opts.zoneMods ?? pickZoneMods(g);
   g.zones.forEach((z, i) => (z.modId = mods[i]));
-  g.initiative = randInt(g, 2) as PlayerId;
+  g.initiative = opts.initiative ?? (randInt(g, 2) as PlayerId);
   for (const p of g.players) {
-    shuffle(g, p.deck);
+    // Draws pop from the end, so a stacked list is reversed to come out first-card-first.
+    if (opts.stacked) p.deck.reverse();
+    else shuffle(g, p.deck);
     for (let i = 0; i < g.config.startHand; i++) drawCard(g, p.id);
   }
   beginTurn(g);

@@ -1223,21 +1223,19 @@ input { font: inherit; }
   background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--c) 28%, transparent), #0a0e14 70%);
 }
 .hcard.has-art .hcard-art { background: #080b10; }
+/* Pinned, not grid-centred: WebKit centres it in a row sized from the art's aspect, pushing tall art down. */
 .hcard-art .portrait {
+  position: absolute; inset: 0;
   width: 100% !important; height: 100% !important;
   border-radius: 0; box-shadow: none;
   object-fit: cover; object-position: center 18%;
 }
-/* Item art is framed for a square; keep it upright in the upper card body like operators. */
+/* Item art is 3:4 with the object centred; operator art is square with the face near the top. */
 .hcard.type-gear .hcard-art .portrait,
-.hcard.type-tactic .hcard-art .portrait {
-  object-fit: contain;
-  object-position: center 22%;
-}
+.hcard.type-tactic .hcard-art .portrait,
 .cdetail.has-art.type-gear .cdetail-hero .portrait,
 .cdetail.has-art.type-tactic .cdetail-hero .portrait {
-  object-fit: contain;
-  object-position: center center;
+  object-position: center;
 }
 .hcard:not(.has-art) .hcard-art { color: var(--c); opacity: 0.9; }
 .hcard-shade {
@@ -2925,5 +2923,339 @@ input { font: inherit; }
     max-width: 110px;
     height: 160px;
   }
+}
+
+/* ---------- title screen ---------- */
+/*
+ * Boot timeline: CRT scan 0–0.6s → art & grid fade up → DECK / SHOT slam together at ~0.6s
+ * (flash + shake + RGB split) → reticle locks 0.7–1.4s → tagline → cards drift in → TAP TO START 1.7s.
+ */
+.splash {
+  position: absolute; inset: 0; z-index: 0; overflow: hidden; isolation: isolate; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: var(--screen-top) 18px calc(26px + env(safe-area-inset-bottom));
+  background: #020204;
+}
+.splash::before {
+  content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse 90% 70% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.75) 100%);
+}
+.sp-art {
+  position: absolute; inset: -4%; z-index: -4;
+  background:
+    linear-gradient(180deg, rgba(2, 3, 6, 0.62) 0%, rgba(2, 3, 6, 0.4) 38%, rgba(2, 2, 4, 0.85) 78%, #020204 100%),
+    linear-gradient(rgba(128, 128, 128, 0.35), rgba(128, 128, 128, 0.35)),
+    var(--screen-bg) center / cover no-repeat;
+  background-blend-mode: normal, saturation, normal;
+  animation: spArtIn 1.2s 0.15s ease-out backwards, spKen 18s 1.4s ease-in-out infinite alternate;
+}
+.sp-grid {
+  position: absolute; left: 50%; bottom: 0; z-index: -3; width: 420%; height: 150%;
+  overflow: hidden;
+  transform: translateX(-50%) perspective(1000px) rotateX(60deg);
+  transform-origin: 50% 100%;
+  -webkit-mask-image: linear-gradient(180deg, transparent 58%, rgba(0, 0, 0, 0.55) 78%, #000 100%);
+  mask-image: linear-gradient(180deg, transparent 58%, rgba(0, 0, 0, 0.55) 78%, #000 100%);
+  animation: fadeIn 1s 0.35s backwards;
+}
+.sp-grid i {
+  position: absolute; left: 0; right: 0; top: -56px; bottom: 0;
+  background:
+    repeating-linear-gradient(90deg, rgba(25, 240, 255, 0.5) 0 2px, transparent 2px 56px),
+    repeating-linear-gradient(180deg, rgba(25, 240, 255, 0.5) 0 2px, transparent 2px 56px);
+  animation: spGrid 1.1s linear infinite;
+}
+.sp-horizon {
+  position: absolute; left: 0; right: 0; bottom: 36%; z-index: -3; height: 90px; pointer-events: none;
+  background: radial-gradient(ellipse 60% 50% at 50% 100%, rgba(255, 45, 85, 0.32), rgba(25, 240, 255, 0.12) 45%, transparent 75%);
+  animation: fadeIn 1.2s 0.5s backwards;
+}
+.sp-cards { position: absolute; inset: 0; z-index: -2; pointer-events: none; }
+.sp-card {
+  position: absolute; left: var(--x); top: var(--y); width: 30%; max-width: 132px; aspect-ratio: 2 / 3;
+  border-radius: 8px; overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--c) 75%, #fff);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 26px -4px var(--c), 0 20px 40px rgba(0, 0, 0, 0.65);
+  transform: rotate(var(--r)) scale(var(--s));
+  opacity: 0.5; filter: saturate(0.85) brightness(0.8);
+  animation: spCardIn 1s var(--d) var(--ease-out-expo) backwards, spFloat 6.5s calc(var(--d) + 1s) ease-in-out infinite alternate;
+}
+.sp-card img { width: 100%; height: 100%; object-fit: cover; object-position: center 18%; display: block; }
+.sp-card::after {
+  content: ''; position: absolute; inset: 0;
+  background:
+    linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.2) 48%, transparent 58%),
+    linear-gradient(180deg, transparent 45%, rgba(2, 3, 6, 0.8));
+}
+.sp-embers { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.sp-embers i {
+  position: absolute; bottom: -8px; left: var(--x); width: var(--sz); height: var(--sz); border-radius: 50%;
+  background: var(--c); box-shadow: 0 0 6px var(--c), 0 0 14px var(--c); opacity: 0;
+  animation: spEmber var(--t) var(--d) linear infinite;
+}
+
+.sp-hud {
+  position: absolute; top: max(16px, calc(8px + env(safe-area-inset-top, 0px))); z-index: 2;
+  display: flex; flex-direction: column; gap: 3px;
+  font-family: var(--font-num); font-size: 10px; font-weight: 600; letter-spacing: 0.26em; color: rgba(25, 240, 255, 0.6);
+}
+.sp-hud b { color: #eaffff; font-weight: 700; }
+.sp-hud span { display: flex; align-items: center; gap: 5px; white-space: nowrap; animation: spType 0.45s calc(1.35s + var(--i) * 0.16s) steps(14) backwards; }
+.sp-hud-tl { left: 14px; }
+.sp-hud-tr { right: 14px; align-items: flex-end; color: rgba(255, 255, 255, 0.55); }
+.sp-rec { width: 6px; height: 6px; border-radius: 50%; background: var(--opp); box-shadow: 0 0 8px var(--opp); animation: blink 1.1s steps(1) infinite; }
+
+.sp-center { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; margin-top: -9vh; animation: spShake 0.42s 0.6s both; }
+.sp-reticle { position: absolute; left: 50%; top: 36%; width: 250px; height: 250px; margin: -125px 0 0 -125px; z-index: -1; pointer-events: none; }
+.sp-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 1px dashed rgba(25, 240, 255, 0.4);
+  animation: spLock 0.7s 0.7s var(--ease-out-expo) backwards, spSpin 30s 1.4s linear infinite;
+}
+.sp-arc {
+  position: absolute; inset: 26px; border-radius: 50%;
+  border: 2px solid transparent; border-top-color: rgba(255, 45, 85, 0.75); border-bottom-color: rgba(25, 240, 255, 0.75);
+  filter: drop-shadow(0 0 6px rgba(25, 240, 255, 0.6));
+  animation: spLock 0.6s 0.85s var(--ease-out-expo) backwards, spSpin 7s 1.45s linear infinite reverse;
+}
+.sp-cross { position: absolute; inset: -18px; animation: spLock 0.5s 1s var(--ease-out-expo) backwards; }
+.sp-cross::before, .sp-cross::after { content: ''; position: absolute; background: rgba(255, 255, 255, 0.4); }
+/* Top tick only: a bottom tick would cut through the tagline. */
+.sp-cross::before {
+  left: 50%; top: 0; bottom: 0; width: 1px;
+  -webkit-mask-image: linear-gradient(180deg, #000 0 16%, transparent 16%);
+  mask-image: linear-gradient(180deg, #000 0 16%, transparent 16%);
+}
+.sp-cross::after {
+  top: 50%; left: 0; right: 0; height: 1px;
+  -webkit-mask-image: linear-gradient(90deg, #000 0 16%, transparent 16% 84%, #000 84%);
+  mask-image: linear-gradient(90deg, #000 0 16%, transparent 16% 84%, #000 84%);
+}
+.sp-logo {
+  margin: 0; display: flex; flex-direction: column; align-items: center;
+  font-family: var(--font-logo); font-weight: 400; font-size: clamp(76px, 24vw, 112px); line-height: 0.86; letter-spacing: 0.02em;
+  animation: spJolt 8s 3.2s steps(1) infinite;
+}
+.sp-deck, .sp-shot { position: relative; display: block; }
+.sp-deck {
+  translate: -0.2em 0;
+  color: #effeff;
+  text-shadow: 0 0 1px #fff, 0 0 8px var(--me), 0 0 24px var(--me), 0 0 60px rgba(25, 240, 255, 0.5);
+  animation: spInL 0.5s 0.1s cubic-bezier(0.2, 0.9, 0.25, 1) backwards;
+}
+.sp-shot {
+  translate: 0.2em 0;
+  color: #fff1f4;
+  text-shadow: 0 0 1px #fff, 0 0 8px var(--opp), 0 0 24px var(--opp), 0 0 60px rgba(255, 45, 85, 0.5);
+  animation: spInR 0.5s 0.16s cubic-bezier(0.2, 0.9, 0.25, 1) backwards;
+}
+.sp-deck::before, .sp-deck::after, .sp-shot::before, .sp-shot::after {
+  content: attr(data-text); position: absolute; inset: 0; pointer-events: none; text-shadow: none; opacity: 0;
+}
+.sp-deck::before, .sp-shot::before { color: #ff2d6f; animation: spChromaL 0.6s 0.62s steps(5) both, spGlitchL 8s 3.2s steps(1) infinite; }
+.sp-deck::after, .sp-shot::after { color: #22e8ff; animation: spChromaR 0.6s 0.62s steps(5) both, spGlitchR 8s 3.2s steps(1) infinite; }
+.sp-sub {
+  display: flex; align-items: center; gap: 10px; margin-top: 20px;
+  font-family: var(--font-num); font-size: 12px; font-weight: 600; letter-spacing: 0.46em; text-indent: 0.46em;
+  color: rgba(214, 246, 255, 0.9); white-space: nowrap;
+  animation: spTrack 0.9s 0.95s var(--ease-out-expo) backwards;
+}
+.sp-sub::before, .sp-sub::after { content: ''; width: 24px; height: 1px; background: linear-gradient(90deg, transparent, var(--me)); }
+.sp-sub::after { background: linear-gradient(90deg, var(--opp), transparent); }
+.sp-tag {
+  margin-top: 12px; font-family: var(--font-jp); font-size: 15px; font-weight: 700; letter-spacing: 0.32em; text-indent: 0.32em;
+  color: #e9eff7; text-shadow: 0 2px 12px #000;
+  animation: rise 0.6s 1.2s var(--ease-out-expo) backwards;
+}
+.sp-start {
+  position: absolute; left: 0; right: 0; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 2;
+  display: flex; justify-content: center; pointer-events: none;
+  animation: fadeIn 0.5s 1.7s backwards;
+}
+.sp-start span {
+  position: relative; display: flex; align-items: center; gap: 14px;
+  font-family: var(--font-num); font-size: 18px; font-weight: 700; letter-spacing: 0.5em; text-indent: 0.5em; color: #fff;
+  text-shadow: 0 0 10px rgba(25, 240, 255, 0.85), 0 0 26px rgba(25, 240, 255, 0.4);
+  animation: spBreathe 1.8s 2.2s ease-in-out infinite;
+}
+.sp-start span::before, .sp-start span::after { content: ''; width: 34px; height: 1px; background: linear-gradient(90deg, transparent, #fff); }
+.sp-start span::after { background: linear-gradient(90deg, #fff, transparent); }
+.sp-foot {
+  position: absolute; left: 0; right: 0; bottom: calc(22px + env(safe-area-inset-bottom)); z-index: 2; text-align: center;
+  font-family: var(--font-num); font-size: 10px; font-weight: 600; letter-spacing: 0.3em; color: rgba(255, 255, 255, 0.32);
+  animation: fadeIn 0.6s 1.9s backwards;
+}
+.sp-scan {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 4; height: 2px; pointer-events: none;
+  background: #fff; box-shadow: 0 0 14px #fff, 0 0 34px var(--me);
+  animation: spScan 0.6s 0.02s cubic-bezier(0.5, 0, 0.9, 0.6) both;
+}
+.sp-flash {
+  position: absolute; inset: 0; z-index: 4; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.95), rgba(25, 240, 255, 0.3) 38%, transparent 72%);
+  animation: spFlash 0.55s 0.58s ease-out both;
+}
+.splash.leaving { pointer-events: none; }
+.splash.leaving .sp-center { animation: spOut 0.6s var(--ease-in-quad) forwards; }
+.splash.leaving .sp-start,
+.splash.leaving .sp-hud,
+.splash.leaving .sp-foot { animation: spGone 0.2s forwards; }
+.splash.leaving .sp-cards { animation: spGone 0.45s forwards; }
+.splash.leaving .sp-grid i { animation-duration: 0.28s; }
+.splash.leaving .sp-flash { animation: spFlashOut 0.62s ease-in forwards; }
+
+@keyframes spArtIn { from { opacity: 0; transform: scale(1.14); } }
+@keyframes spKen { from { transform: scale(1); } to { transform: scale(1.08) translate(-1.5%, 1%); } }
+@keyframes spGrid { to { transform: translateY(56px); } }
+@keyframes spCardIn { from { opacity: 0; transform: translateX(var(--from)) rotate(var(--r)) scale(var(--s)); filter: blur(8px); } }
+@keyframes spFloat { to { translate: 0 -16px; rotate: 3deg; } }
+@keyframes spEmber {
+  0% { opacity: 0; transform: translate(0, 0); }
+  12% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(var(--dx), -92dvh); }
+}
+@keyframes spType { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes spInL { from { opacity: 0; transform: translateX(-80vw) skewX(-28deg); filter: blur(8px); } 70% { opacity: 1; } }
+@keyframes spInR { from { opacity: 0; transform: translateX(80vw) skewX(28deg); filter: blur(8px); } 70% { opacity: 1; } }
+@keyframes spShake {
+  0%, 100% { transform: translate(0, 0); }
+  15% { transform: translate(-7px, 3px); }
+  35% { transform: translate(6px, -3px); }
+  55% { transform: translate(-3px, 2px); }
+  75% { transform: translate(2px, -1px); }
+}
+@keyframes spChromaL { 0% { opacity: 0.95; translate: -10px 0; } 40% { opacity: 0.8; translate: 5px -1px; } 70% { opacity: 0.5; translate: -2px 1px; } 100% { opacity: 0; translate: 0 0; } }
+@keyframes spChromaR { 0% { opacity: 0.95; translate: 10px 0; } 40% { opacity: 0.8; translate: -5px 1px; } 70% { opacity: 0.5; translate: 2px -1px; } 100% { opacity: 0; translate: 0 0; } }
+@keyframes spGlitchL {
+  0%, 92%, 100% { opacity: 0; translate: 0 0; clip-path: inset(0 0 0 0); }
+  93% { opacity: 0.75; translate: -7px 0; clip-path: inset(10% 0 58% 0); }
+  95% { opacity: 0.65; translate: 5px 0; clip-path: inset(60% 0 10% 0); }
+  97% { opacity: 0.45; translate: -3px 0; clip-path: inset(34% 0 40% 0); }
+}
+@keyframes spGlitchR {
+  0%, 92%, 100% { opacity: 0; translate: 0 0; clip-path: inset(0 0 0 0); }
+  93% { opacity: 0.75; translate: 7px 0; clip-path: inset(56% 0 12% 0); }
+  95% { opacity: 0.65; translate: -5px 0; clip-path: inset(8% 0 64% 0); }
+  97% { opacity: 0.45; translate: 3px 0; clip-path: inset(40% 0 30% 0); }
+}
+@keyframes spJolt {
+  0%, 92%, 100% { transform: none; }
+  93% { transform: translateX(3px) skewX(-6deg); }
+  95% { transform: translateX(-2px) skewX(4deg); }
+  97% { transform: none; }
+}
+@keyframes spLock { from { opacity: 0; transform: scale(1.9) rotate(-40deg); } }
+@keyframes spSpin { to { transform: rotate(360deg); } }
+@keyframes spTrack { from { opacity: 0; letter-spacing: 1.3em; } }
+@keyframes spBreathe { 50% { opacity: 0.35; } }
+@keyframes spScan { 0% { opacity: 1; transform: translateY(0); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(100dvh); } }
+@keyframes spFlash { 0% { opacity: 0; } 14% { opacity: 0.85; } 100% { opacity: 0; } }
+@keyframes spFlashOut { 0% { opacity: 0; } 55% { opacity: 1; } 100% { opacity: 1; background-color: #fff; } }
+@keyframes spOut { to { opacity: 0; transform: scale(1.35); filter: blur(6px); } }
+@keyframes spGone { to { opacity: 0; } }
+
+/* ---------- tutorial coach ---------- */
+.tut { position: absolute; inset: 0; z-index: 65; pointer-events: none; }
+.tut-catch { position: absolute; inset: 0; padding: 0; border: 0; background: transparent; pointer-events: auto; cursor: pointer; }
+.tut-dim { position: absolute; inset: 0; background: rgba(2, 3, 6, 0.62); animation: fadeIn 0.25s; }
+/* The spotlight is a hole in a huge shadow, so the dim never swallows the taps that go to the target. */
+.tut-hole {
+  position: absolute; border-radius: 6px;
+  box-shadow: 0 0 0 200vmax rgba(2, 3, 6, 0.62), 0 0 0 1px rgba(255, 255, 255, 0.4);
+  transition: left 0.3s var(--ease-out-expo), top 0.3s var(--ease-out-expo), width 0.3s var(--ease-out-expo), height 0.3s var(--ease-out-expo);
+}
+.tut-hole.act { box-shadow: 0 0 0 200vmax rgba(2, 3, 6, 0.55), 0 0 0 2px #fff, 0 0 20px 3px rgba(25, 240, 255, 0.75); }
+.tut-hole.act::after {
+  content: ''; position: absolute; inset: -2px; border-radius: inherit;
+  border: 2px solid var(--me); animation: tutRing 1.3s ease-out infinite;
+}
+.tut-tap {
+  position: absolute; translate: -50% 0; padding: 2px 9px;
+  font-family: var(--font-num); font-size: 12px; font-weight: 700; letter-spacing: 0.3em; text-indent: 0.3em;
+  color: #04121a; background: var(--me); box-shadow: 0 0 14px rgba(25, 240, 255, 0.8);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  animation: tutBob 1s ease-in-out infinite;
+  transition: left 0.3s var(--ease-out-expo), top 0.3s var(--ease-out-expo);
+}
+.tut-coach {
+  position: absolute; left: 10px; right: 10px; pointer-events: auto;
+  display: flex; gap: 10px; padding: 10px 12px 11px 10px;
+  background: linear-gradient(90deg, rgba(25, 240, 255, 0.12), transparent 55%), rgba(5, 7, 11, 0.96);
+  border: 1px solid rgba(25, 240, 255, 0.4); border-left: 3px solid var(--me);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.65), 0 0 26px -10px var(--me);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+  animation: tutIn 0.32s var(--ease-out-expo);
+}
+.tut-coach.at-top { top: calc(env(safe-area-inset-top, 0px) + 8px); }
+.tut-coach.at-bottom { bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); }
+.tut-coach.at-mid { top: 50%; translate: 0 -50%; }
+.tut-coach.nudge-a { animation: tutNudgeA 0.36s ease-out; }
+.tut-coach.nudge-b { animation: tutNudgeB 0.36s ease-out; }
+.tut-face {
+  flex: none; width: 50px; height: 50px; overflow: hidden;
+  border: 1px solid rgba(25, 240, 255, 0.55); background: #0b1118;
+  clip-path: polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 100%);
+}
+.tut-face img { width: 100%; height: 100%; object-fit: cover; object-position: center 16%; display: block; }
+.tut-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.tut-head { display: flex; align-items: center; gap: 8px; }
+.tut-head b { font-family: var(--font-jp); font-size: 12px; font-weight: 800; color: var(--me); letter-spacing: 0.1em; }
+.tut-head span { font-family: var(--font-num); font-size: 11px; font-weight: 700; letter-spacing: 0.2em; color: var(--muted); }
+.tut-skip {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 2px; padding: 2px 4px 2px 8px;
+  border: 1px solid var(--line-strong); border-radius: 2px; background: rgba(255, 255, 255, 0.04);
+  font-family: var(--font-num); font-size: 11px; font-weight: 700; letter-spacing: 0.16em; color: #c5d0dc;
+}
+.tut-say { margin: 0; font-family: var(--font-jp); font-size: 14px; font-weight: 600; line-height: 1.6; color: #eef3f8; animation: tutSay 0.35s var(--ease-out-expo); }
+.tut-say b { color: #fff; font-weight: 800; text-shadow: 0 0 10px rgba(25, 240, 255, 0.7); }
+.tut-next {
+  align-self: flex-end; display: inline-flex; align-items: center; gap: 2px;
+  font-family: var(--font-jp); font-size: 11px; font-weight: 700; color: var(--me); animation: pulse 1.3s infinite;
+}
+@keyframes tutRing { from { opacity: 0.95; transform: scale(1); } to { opacity: 0; transform: scale(1.14); } }
+@keyframes tutBob { 50% { transform: translateY(-4px); } }
+@keyframes tutIn { from { opacity: 0; transform: translateY(8px); } }
+@keyframes tutSay { from { opacity: 0; transform: translateX(-6px); } }
+@keyframes tutNudgeA { 20% { transform: translateX(-7px); } 45% { transform: translateX(6px); } 70% { transform: translateX(-3px); } }
+@keyframes tutNudgeB { 20% { transform: translateX(7px); } 45% { transform: translateX(-6px); } 70% { transform: translateX(3px); } }
+
+.result-note {
+  margin: 0 0 4px; font-family: var(--font-jp); font-size: 13px; font-weight: 600; line-height: 1.6; color: #dfe7f0;
+}
+.howto-train { --a: var(--gold); }
+
+/* ---------- starter deck ---------- */
+.starter-head small { font-family: var(--font-num); font-size: 12px; font-weight: 700; letter-spacing: 0.4em; color: var(--gold); }
+.starter-head h2 { margin: 4px 0 6px; font-family: var(--font-jp); font-size: 22px; font-weight: 800; text-shadow: 0 2px 10px #000; }
+.starter-head p { margin: 0; font-family: var(--font-jp); font-size: 12px; line-height: 1.6; color: #c5d0dc; }
+.starter-picks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.starter-pick {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 0 0 8px; overflow: hidden;
+  text-align: left; background: rgba(6, 7, 10, 0.82); border: 1px solid var(--line); border-radius: 2px;
+  opacity: 0.6; transition: opacity 0.15s, transform 0.18s var(--ease-out-back), box-shadow 0.15s, border-color 0.15s;
+}
+.starter-pick.on {
+  opacity: 1; transform: translateY(-3px);
+  border-color: var(--c); box-shadow: 0 0 0 1px var(--c), 0 10px 24px -10px var(--c);
+}
+.starter-pick-art { position: relative; width: 100%; height: 76px; overflow: hidden; margin-bottom: 4px; }
+.starter-pick-art img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; display: block; filter: saturate(0.85); }
+.starter-pick-art::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 45%, rgba(6, 7, 10, 0.95)), linear-gradient(0deg, color-mix(in srgb, var(--c) 24%, transparent), transparent 60%);
+}
+.starter-pick b { padding: 0 8px; font-family: var(--font-display); font-size: 20px; font-weight: 900; line-height: 1; letter-spacing: 0.06em; color: var(--c); }
+.starter-pick small { padding: 0 8px; font-family: var(--font-jp); font-size: 11px; color: #a3aebd; }
+.starter-detail { animation: rise 0.25s var(--ease-out-expo); }
+.starter-stars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 2px 0 12px; }
+.starter-star .hcard { width: 100%; height: 132px; }
+.starter-confirm { border-top-color: var(--c); }
+.starter-confirm p { margin: 0 0 4px; font-family: var(--font-jp); font-size: 13px; line-height: 1.6; color: #c5d0dc; }
+
+@media (prefers-reduced-motion: reduce) {
+  .splash *, .splash *::before, .splash *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; }
+  .tut-hole.act::after, .tut-tap, .tut-next { animation: none; }
 }
 
