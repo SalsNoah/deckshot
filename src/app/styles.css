@@ -1117,6 +1117,58 @@ input { font: inherit; }
 }
 .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 10px; }
 .card-grid .hcard { width: auto; height: 118px; }
+.collect-tools {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 8px 10px;
+  background: rgba(6, 7, 10, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.collect-tool-row {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+}
+.collect-tool-label {
+  flex: none; width: 2.5em;
+  font-family: var(--font-num); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.12em; color: var(--muted);
+}
+.collect-chips {
+  display: flex; flex-wrap: wrap; gap: 4px; min-width: 0;
+}
+.collect-chips button {
+  --chip: #8fb8ff;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--chip) 28%, var(--line));
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #9fb0c2;
+  font-family: var(--font-num); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.collect-chips button.on {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--chip) 70%, transparent);
+  background: color-mix(in srgb, var(--chip) 22%, transparent);
+  box-shadow: 0 0 12px -6px color-mix(in srgb, var(--chip) 80%, transparent);
+}
+.collect-toggle {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 7px 10px; text-align: left;
+  border: 1px solid var(--line); border-radius: 2px;
+  background: rgba(7, 10, 16, 0.45); color: #9fb0c2;
+}
+.collect-toggle span { flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.collect-toggle b { font-family: var(--font-jp); font-size: 12px; color: var(--text); font-weight: 700; }
+.collect-toggle small { font-family: var(--font-jp); font-size: 10px; }
+.collect-toggle.on { color: var(--me); border-color: color-mix(in srgb, var(--me) 45%, transparent); }
+.collect-toggle.on .gacha-switch { background: color-mix(in srgb, var(--me) 35%, #0a141a); }
+.collect-toggle.on .gacha-switch::after { transform: translateX(18px); background: var(--me); }
+.collect-empty {
+  margin: 18px 0; text-align: center;
+  font-family: var(--font-jp); font-size: 13px; color: var(--muted);
+}
 .other-list h3 { font-family: var(--font-jp); font-size: 14px; margin: 8px 0; color: var(--me); }
 .other-item { background: rgba(6, 7, 10, 0.8); border: 1px solid var(--line); border-radius: 2px; padding: 10px; margin-bottom: 6px; font-family: var(--font-jp); display: grid; grid-template-columns: auto 1fr auto; gap: 4px 8px; align-items: center; backdrop-filter: blur(8px); }
 .zone-gallery { display: flex; flex-direction: column; gap: 8px; }
@@ -2777,152 +2829,6 @@ input { font: inherit; }
   .result-title span,
   .screen > * { animation: none; }
   .pack-mote, .shutter, .fx-orb { display: none; }
-}
-
-/* ---------- rarity preview ---------- */
-.anim-preview-note {
-  margin: 0 0 10px;
-  font-family: var(--font-jp);
-  font-size: 12px;
-  color: var(--muted);
-}
-.rarity-preview-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-.rarity-preview-tabs button {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.anim-preview-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
-  gap: 10px;
-  padding-bottom: 24px;
-}
-.anim-preview-grid.card-grid-preview {
-  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
-  gap: 12px 8px;
-}
-.anim-preview-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 6px 10px;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--role, #19f0ff) 40%, transparent);
-  background: rgba(10, 14, 20, 0.72);
-  backdrop-filter: blur(6px);
-  color: var(--text);
-  cursor: pointer;
-  transition: border-color 0.12s, transform 0.12s;
-}
-.anim-preview-cell.preview-card-cell {
-  padding: 6px 4px 8px;
-}
-.anim-preview-cell.preview-card-cell .hcard {
-  width: 76px;
-  height: 114px;
-}
-.anim-preview-grid.compare-grid .anim-preview-cell .hcard {
-  width: 76px;
-  height: 114px;
-}
-.anim-preview-cell:hover,
-.anim-preview-cell:focus-visible {
-  border-color: var(--role, #19f0ff);
-  transform: translateY(-1px);
-  outline: none;
-}
-.anim-preview-cell .portrait {
-  width: 112px !important;
-  height: 112px !important;
-  border-radius: 6px;
-}
-.anim-preview-name {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 14px;
-  letter-spacing: 0.04em;
-  color: var(--role, #19f0ff);
-}
-.anim-preview-jp {
-  font-family: var(--font-jp);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text);
-}
-.anim-preview-modal {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  max-width: min(360px, 94vw);
-}
-.anim-preview-modal.wide {
-  max-width: min(520px, 96vw);
-  width: 100%;
-}
-.anim-preview-modal .portrait {
-  width: min(280px, 78vw) !important;
-  height: min(280px, 78vw) !important;
-  border-radius: 8px;
-}
-.anim-preview-modal-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  font-family: var(--font-jp);
-}
-.anim-preview-modal-meta b {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 24px;
-  letter-spacing: 0.06em;
-  color: var(--me);
-}
-.anim-preview-modal-meta span { color: var(--muted); font-size: 13px; }
-.rarity-compare-row {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  width: 100%;
-}
-.rarity-compare-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-.rarity-compare-item .hcard {
-  width: 100%;
-  max-width: 88px;
-  height: 132px;
-}
-.rarity-compare-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-family: var(--font-jp);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--muted);
-}
-@media (max-width: 420px) {
-  .rarity-compare-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px 10px;
-  }
-  .rarity-compare-item .hcard {
-    max-width: 110px;
-    height: 160px;
-  }
 }
 
 /* ---------- title screen ---------- */

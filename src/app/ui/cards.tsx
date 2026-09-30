@@ -63,11 +63,6 @@ export function preloadCardArt(ids: Iterable<string>) {
   }
 }
 
-/** Ordered list of operators that have baked motion GIFs. */
-export function portraitAnimIds(): readonly string[] {
-  return OPERATOR_ANIM_IDS;
-}
-
 /** Transparent neon signature stamp overlaid on operator portraits. */
 export function SignatureMark({ cardId, className = '' }: { cardId: string; className?: string }) {
   return (

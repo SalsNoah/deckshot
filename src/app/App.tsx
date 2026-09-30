@@ -12,7 +12,6 @@ import { DeckSelect } from './screens/DeckSelect';
 import { Gacha } from './screens/Gacha';
 import { HowTo } from './screens/HowTo';
 import { Lobby } from './screens/Lobby';
-import { AnimPreview } from './screens/AnimPreview';
 import { Splash } from './screens/Splash';
 import { StarterDeck } from './screens/StarterDeck';
 import { Title } from './screens/Title';
@@ -28,8 +27,7 @@ type Screen =
   | { name: 'battle'; conn: MatchConnection; key: number; tutorial?: 'first' | 'replay' }
   | { name: 'starter' }
   | { name: 'howto'; next?: Screen }
-  | { name: 'cards' }
-  | { name: 'animPreview' };
+  | { name: 'cards' };
 
 export function App() {
   const [profile, setProfile] = useState<Profile>(loadProfile);
@@ -230,9 +228,8 @@ export function App() {
         <HowTo onBack={() => setScreen(screen.next ?? { name: 'title' })} onTutorial={() => startTutorial('replay')} />
       )}
       {screen.name === 'cards' && (
-        <Cards profile={profile} onBack={() => setScreen({ name: 'title' })} onPreview={() => setScreen({ name: 'animPreview' })} />
+        <Cards profile={profile} onBack={() => setScreen({ name: 'title' })} />
       )}
-      {screen.name === 'animPreview' && <AnimPreview onBack={() => setScreen({ name: 'cards' })} />}
     </div>
   );
 }
