@@ -1,4 +1,4 @@
-import { Check, ChevronRight } from 'lucide-react';
+import { Check, ChevronRight, Minus, Plus } from 'lucide-react';
 import { useMemo, useState, type CSSProperties } from 'react';
 import {
   ALL_CARDS, DECK_SIZE, MAX_COPIES, countCards, validateDeck, type CardType,
@@ -51,12 +51,18 @@ export function DeckEdit({ profile, onChange, onBack }: {
     });
   };
 
-  const add = (id: string) => {
+  /** Why `id` can't be added right now, or null if it can. */
+  const addBlock = (id: string): string | null => {
     const inDeck = deckCounts.get(id) ?? 0;
-    const owned = profile.owned[id] ?? 0;
-    if (draft.length >= DECK_SIZE) return flash(`デッキは${DECK_SIZE}枚まで`);
-    if (inDeck >= MAX_COPIES) return flash(`同じカードは${MAX_COPIES}枚まで`);
-    if (inDeck >= owned) return flash('所持枚数が足りません');
+    if (draft.length >= DECK_SIZE) return `デッキは${DECK_SIZE}枚まで`;
+    if (inDeck >= MAX_COPIES) return `同じカードは${MAX_COPIES}枚まで`;
+    if (inDeck >= (profile.owned[id] ?? 0)) return '所持枚数が足りません';
+    return null;
+  };
+
+  const add = (id: string) => {
+    const block = addBlock(id);
+    if (block) return flash(block);
     setDraft((d) => [...d, id]);
   };
 
@@ -102,13 +108,13 @@ export function DeckEdit({ profile, onChange, onBack }: {
         <div className="deck-detail-head">
           <div>
             <div className="deck-en">SET {slot + 1}</div>
-            <div className="deck-name">編成中<span>{draft.length}/{DECK_SIZE}枚・タップで外す</span></div>
+            <div className="deck-name">編成中<span>{draft.length}/{DECK_SIZE}枚・タップで詳細</span></div>
           </div>
         </div>
         <DeckRoster
           cards={draft}
           profile={profile}
-          onCard={remove}
+          onCard={setPeek}
           emptyHint="下の所持カードをタップして追加"
         />
         {!validation.ok && draft.length === DECK_SIZE && (
@@ -136,16 +142,11 @@ export function DeckEdit({ profile, onChange, onBack }: {
                 kira={hasKira(profile, c.id)}
                 sign={hasSign(profile, c.id)}
                 flow={hasFlow(profile, c.id)}
-                onClick={() => (inDeck > 0 && full ? remove(c.id) : add(c.id))}
+                onClick={() => setPeek(c.id)}
               />
               <div className="pool-meta">
                 <span>所持 {owned}</span>
                 <span className={inDeck ? 'on' : ''}>編成 {inDeck}/{MAX_COPIES}</span>
-              </div>
-              <div className="pool-actions">
-                <button className="btn small" disabled={full} onClick={() => add(c.id)}>+</button>
-                <button className="btn small ghost" disabled={inDeck === 0} onClick={() => remove(c.id)}>−</button>
-                <button className="btn small ghost" onClick={() => setPeek(c.id)}>?</button>
               </div>
             </div>
           );
@@ -164,14 +165,34 @@ export function DeckEdit({ profile, onChange, onBack }: {
 
       {toast && <div className="toast">{toast}</div>}
 
-      {peek && (
-        <div className="modal-bg" onClick={() => setPeek(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <CardDetail cardId={peek} kira={hasKira(profile, peek)} sign={hasSign(profile, peek)} flow={hasFlow(profile, peek)} />
-            <button className="btn ghost small" onClick={() => setPeek(null)}>閉じる</button>
+      {peek && (() => {
+        const inDeck = deckCounts.get(peek) ?? 0;
+        const block = addBlock(peek);
+        return (
+          <div className="modal-bg" onClick={() => setPeek(null)}>
+            <div className="modal deck-peek" onClick={(e) => e.stopPropagation()}>
+              <CardDetail cardId={peek} kira={hasKira(profile, peek)} sign={hasSign(profile, peek)} flow={hasFlow(profile, peek)} />
+              <div className="deck-peek-foot">
+                <div className="deck-peek-meta">
+                  <span>所持<b>{profile.owned[peek] ?? 0}</b></span>
+                  <span className={inDeck ? 'on' : ''}>編成<b>{inDeck}/{MAX_COPIES}</b></span>
+                  <span>デッキ<b>{draft.length}/{DECK_SIZE}</b></span>
+                </div>
+                <div className="deck-peek-actions">
+                  <button className="btn ghost" disabled={inDeck === 0} onClick={() => remove(peek)}>
+                    <Minus size={16} />外す
+                  </button>
+                  <button className="btn primary" disabled={!!block} onClick={() => add(peek)}>
+                    <Plus size={16} />追加
+                  </button>
+                </div>
+                {block && <p className="deck-peek-note">{block}</p>}
+                <button className="btn ghost small" onClick={() => setPeek(null)}>閉じる</button>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

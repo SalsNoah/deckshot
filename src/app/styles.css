@@ -269,6 +269,8 @@ input { font: inherit; }
 /* ---------- title ---------- */
 .title-screen { justify-content: space-between; align-items: stretch; gap: 12px; }
 .title-top { display: flex; align-items: center; justify-content: space-between; }
+/* Its audio dropdown overlaps the logo and player card below, so this row must stack above them. */
+.title-screen > .title-top { z-index: 10; }
 .title-top-spacer { flex: 1; }
 .ticket-chip {
   position: relative; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 10px;
@@ -542,8 +544,20 @@ input { font: inherit; }
   display: flex; justify-content: space-between; font-size: 10px; font-family: var(--font-jp); color: var(--muted);
 }
 .pool-meta .on { color: var(--me); font-weight: 700; }
-.pool-actions { display: flex; gap: 4px; }
-.pool-actions .btn { flex: 1; padding: 4px; font-size: 12px; }
+.deck-peek-foot {
+  position: sticky; bottom: 0; z-index: 2;
+  display: flex; flex-direction: column; gap: 8px;
+  margin: 0 -16px -16px; padding: 10px 16px 16px;
+  background: var(--bg2); border-top: 1px solid var(--line);
+}
+.deck-peek-meta {
+  display: flex; justify-content: space-between; gap: 8px;
+  font-family: var(--font-jp); font-size: 12px; color: var(--muted);
+}
+.deck-peek-meta b { margin-left: 5px; font-family: var(--font-num); font-size: 14px; color: #fff; }
+.deck-peek-meta .on b { color: var(--me); }
+.deck-peek-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.deck-peek-note { margin: 0; text-align: center; color: var(--opp); font-family: var(--font-jp); font-size: 12px; }
 .sticky-save { position: sticky; bottom: 8px; z-index: 5; box-shadow: 0 -8px 20px rgba(0,0,0,0.45); }
 
 .audio-wrap { position: relative; }
